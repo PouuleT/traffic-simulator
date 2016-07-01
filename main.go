@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -73,16 +74,35 @@ func getURLs() error {
 
 func (s *Stats) addError(err error) {
 	s.Lock()
+	defer s.Unlock()
+
 	s.nbOfRequests++
-	if _, ok := err.(net.Error); ok {
-		s.statusStats["neterr"] += 1
-	} else {
-		s.statusStats[err.Error()] += 1
+	var errName string
+	switch e := err.(type) {
+	case *net.DNSError:
+		errName = "DNS lookup error"
+	case *net.DNSConfigError:
+		errName = "DNS config error"
+	case *net.AddrError:
+		errName = "Addr Error"
+	case *net.OpError:
+		errName = "Op Error"
+	case *url.Error:
+		if e.Timeout() {
+			errName = "URL Timeout"
+		} else {
+			errName = "Url Error"
+		}
+	case net.Error:
+		errName = "Net Error"
+	default:
+		errName = err.Error()
 	}
-	s.Unlock()
+	s.statusStats[errName] += 1
 }
 func (s *Stats) addRequest(req *Request) {
 	s.Lock()
+	defer s.Unlock()
 	s.nbOfRequests++
 	s.durations.totalDuration += req.duration
 	if s.durations.maxDuration < req.duration {
@@ -92,8 +112,6 @@ func (s *Stats) addRequest(req *Request) {
 		s.durations.minDuration = req.duration
 	}
 	s.statusStats[http.StatusText(req.status)] += 1
-
-	s.Unlock()
 }
 
 func main() {
@@ -104,13 +122,15 @@ func main() {
 	}
 	wg.Wait()
 
+	log.Println("********************************************************")
 	log.Printf("Number of requests : %d", stats.nbOfRequests)
 	log.Printf("Max duration : %s", stats.durations.maxDuration)
 	log.Printf("Min duration : %s", stats.durations.minDuration)
 	log.Printf("Average duration : %s", stats.durations.totalDuration/time.Duration(stats.nbOfRequests))
-	log.Printf("Status")
+	log.Println("********************************************************")
+	log.Printf("Statuses :")
 	for key, value := range stats.statusStats {
-		log.Printf("%s\t -> %d", key, value)
+		log.Printf("\t%20s\t -> %d", key, value)
 	}
 }
 
@@ -139,17 +159,17 @@ func getURL(url string) (*Request, error) {
 }
 
 func work(nb int) {
+	defer wg.Done()
 	for i := 0; i < nbOfRequests; i++ {
 		url := findRandomURL()
 		r, err := getURL(url)
 		if err != nil {
-			log.Println("error - ", err)
+			log.Printf("Worker#%d\t %d/%d - ERROR:  %s", nb, i, nbOfRequests, err)
 			stats.addError(err)
 			continue
 		}
-		log.Printf("%d\t= %d / %d = %d - %s - %s", nb, i, nbOfRequests, r.status, url, r.duration)
+		log.Printf("Worker#%d\t %d/%d - %d ( %s - %s )", nb, i, nbOfRequests, r.status, url, r.duration)
 		stats.addRequest(r)
 		time.Sleep(averageTimeToWait * time.Millisecond)
 	}
-	wg.Done()
 }
