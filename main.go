@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"log"
+	"net/url"
 	"os"
 	"sync"
 	"time"
@@ -34,13 +36,23 @@ func getURLs() error {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		url := scanner.Text()
-		URLs = append(URLs, "http://"+url)
+		u := "http://" + scanner.Text()
+		if _, err := url.Parse(u); err != nil {
+			log.Printf("Invalid URL: %q", u)
+			continue
+		}
+
+		URLs = append(URLs, u)
 	}
 
 	if err := scanner.Err(); err != nil {
 		return err
 	}
+
+	if len(URLs) == 0 {
+		return errors.New("no URL found")
+	}
+
 	return nil
 }
 
