@@ -1,11 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"sync"
 	"time"
+
+	"github.com/olekukonko/tablewriter"
 )
 
 // DurationStats represents statistics of durations
@@ -69,4 +74,35 @@ func (s *Stats) addRequest(req *Request) {
 		s.durations.minDuration = req.duration
 	}
 	s.statusStats[http.StatusText(req.status)]++
+}
+
+// Render renders the results
+func (s *Stats) Render() {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetAlignment(tablewriter.ALIGN_CENTRE)
+	table.SetHeader([]string{
+		"Number of requests ",
+		"Min duration",
+		"Max duration",
+		"Average duration",
+	})
+	table.Append([]string{
+		strconv.Itoa(s.nbOfRequests),
+		s.durations.minDuration.String(),
+		s.durations.maxDuration.String(),
+		(s.durations.totalDuration / time.Duration(s.nbOfRequests)).String(),
+	})
+
+	fmt.Println("Stats :")
+	table.Render()
+
+	statusTable := tablewriter.NewWriter(os.Stdout)
+	statusTable.SetAlignment(tablewriter.ALIGN_CENTRE)
+	statusTable.SetHeader([]string{"Result", "Count"})
+	for key, value := range s.statusStats {
+		statusTable.Append([]string{key, strconv.Itoa(value)})
+	}
+
+	fmt.Println("Statuses :")
+	statusTable.Render()
 }
