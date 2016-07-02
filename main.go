@@ -70,16 +70,7 @@ func main() {
 	}
 	wg.Wait()
 
-	log.Println("********************************************************")
-	log.Printf("Number of requests : %d", stats.nbOfRequests)
-	log.Printf("Max duration : %s", stats.durations.maxDuration)
-	log.Printf("Min duration : %s", stats.durations.minDuration)
-	log.Printf("Average duration : %s", stats.durations.totalDuration/time.Duration(stats.nbOfRequests))
-	log.Println("********************************************************")
-	log.Printf("Statuses :")
-	for key, value := range stats.statusStats {
-		log.Printf("\t%20s\t -> %d", key, value)
-	}
+	stats.Render()
 }
 
 func work(nb int, stats *Stats, wg *sync.WaitGroup) {
