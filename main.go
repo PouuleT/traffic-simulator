@@ -12,15 +12,16 @@ import (
 	"time"
 )
 
+// URLs represents the list of URL to test
 var URLs = []string{}
 
 var nbOfWorkers = 50
 var nbOfRequests = 10
 var stats = newStats()
-var wg sync.WaitGroup
-var fileName = "./top-1m.csv"
+var fileName = "./top-1m.txt"
 var averageTimeToWait = time.Duration(rand.Intn(1000))
 
+// Stats represents the stats of the requests
 type Stats struct {
 	sync.Mutex
 	nbOfRequests int
@@ -34,23 +35,17 @@ func newStats() *Stats {
 	}
 }
 
+// DurationStats represents statistics of durations
 type DurationStats struct {
 	maxDuration   time.Duration
 	minDuration   time.Duration
 	totalDuration time.Duration
 }
 
+// Request represents a requsest reponse, with the return code and the duration
 type Request struct {
 	status   int
 	duration time.Duration
-}
-
-type Worker struct {
-	// done is channel used to stop the app
-	done chan struct{}
-
-	// wait group sync the goroutines launched by the app
-	wg sync.WaitGroup
 }
 
 func getURLs() error {
@@ -98,7 +93,7 @@ func (s *Stats) addError(err error) {
 	default:
 		errName = err.Error()
 	}
-	s.statusStats[errName] += 1
+	s.statusStats[errName]++
 }
 func (s *Stats) addRequest(req *Request) {
 	s.Lock()
@@ -111,14 +106,19 @@ func (s *Stats) addRequest(req *Request) {
 	if s.durations.minDuration == 0 || s.durations.minDuration > req.duration {
 		s.durations.minDuration = req.duration
 	}
-	s.statusStats[http.StatusText(req.status)] += 1
+	s.statusStats[http.StatusText(req.status)]++
 }
 
 func main() {
-	getURLs()
+	if err := getURLs(); err != nil {
+		log.Printf("Error while getting the URLs: %q", err)
+		return
+	}
+
+	var wg sync.WaitGroup
 	for i := 0; i < nbOfWorkers; i++ {
 		wg.Add(1)
-		go work(i)
+		go work(i, &wg)
 	}
 	wg.Wait()
 
@@ -158,7 +158,7 @@ func getURL(url string) (*Request, error) {
 	return &r, nil
 }
 
-func work(nb int) {
+func work(nb int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for i := 0; i < nbOfRequests; i++ {
 		url := findRandomURL()
