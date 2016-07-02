@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"log"
 	"math/rand"
 	"net"
@@ -15,11 +16,20 @@ import (
 // URLs represents the list of URL to test
 var URLs = []string{}
 
-var nbOfWorkers = 50
-var nbOfRequests = 10
+var nbOfClients int
+var nbOfRequests int
+var avgMillisecondsToWait int
+
 var stats = newStats()
-var fileName = "./top-1m.txt"
-var averageTimeToWait = time.Duration(rand.Intn(1000))
+var fileName string
+
+func init() {
+	flag.IntVar(&nbOfClients, "clients", 10, "number of clients making requests")
+	flag.IntVar(&nbOfRequests, "requests", 10, "number of requests to be made by each clients")
+	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
+	flag.StringVar(&fileName, "urlSource", "./top-1m.txt", "filepath where to find the URLs")
+	flag.Parse()
+}
 
 // Stats represents the stats of the requests
 type Stats struct {
@@ -116,7 +126,7 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	for i := 0; i < nbOfWorkers; i++ {
+	for i := 0; i < nbOfClients; i++ {
 		wg.Add(1)
 		go work(i, &wg)
 	}
@@ -170,6 +180,6 @@ func work(nb int, wg *sync.WaitGroup) {
 		}
 		log.Printf("Worker#%d\t %d/%d - %d ( %s - %s )", nb, i, nbOfRequests, r.status, url, r.duration)
 		stats.addRequest(r)
-		time.Sleep(averageTimeToWait * time.Millisecond)
+		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
 }
