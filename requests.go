@@ -17,7 +17,6 @@ func findRandomURL() string {
 }
 
 func getURL(url string) (*Request, error) {
-
 	client := http.DefaultClient
 	client.Timeout = 3 * time.Second
 
@@ -29,9 +28,8 @@ func getURL(url string) (*Request, error) {
 	defer resp.Body.Close()
 	dur := time.Since(t)
 
-	r := Request{
+	return &Request{
 		duration: dur,
 		status:   resp.StatusCode,
-	}
-	return &r, nil
+	}, nil
 }

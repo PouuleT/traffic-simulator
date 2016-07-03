@@ -93,7 +93,7 @@ func (s *Stats) Render() {
 		(s.durations.totalDuration / time.Duration(s.nbOfRequests)).String(),
 	})
 
-	fmt.Println("Stats :")
+	fmt.Printf("\nStats :\n")
 	table.Render()
 
 	statusTable := tablewriter.NewWriter(os.Stdout)
@@ -103,6 +103,6 @@ func (s *Stats) Render() {
 		statusTable.Append([]string{key, strconv.Itoa(value)})
 	}
 
-	fmt.Println("Statuses :")
+	fmt.Printf("\nStatuses :\n")
 	statusTable.Render()
 }

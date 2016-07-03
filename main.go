@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
+	"math"
 	"net/url"
 	"os"
 	"sync"
@@ -64,7 +66,7 @@ func main() {
 
 	stats := newStats()
 	var wg sync.WaitGroup
-	for i := 0; i < nbOfClients; i++ {
+	for i := 1; i <= nbOfClients; i++ {
 		wg.Add(1)
 		go work(i, stats, &wg)
 	}
@@ -75,15 +77,25 @@ func main() {
 
 func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 	defer wg.Done()
-	for i := 0; i < nbOfRequests; i++ {
+
+	// Get the padding size : floor(log10(nbOfClients)) + 1
+	workerFmt := fmt.Sprintf("worker#%%0%dd", int(math.Log10(float64(nbOfClients))+1))
+	counterDecimals := int(math.Log10(float64(nbOfRequests))) + 1
+	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", counterDecimals)
+
+	prefix := fmt.Sprintf(workerFmt, nb)
+	logger := log.New(os.Stdout, prefix, log.LstdFlags)
+	for i := 1; i <= nbOfRequests; i++ {
+		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
 		url := findRandomURL()
 		r, err := getURL(url)
 		if err != nil {
-			log.Printf("Worker#%d\t %d/%d - ERROR:  %s", nb, i, nbOfRequests, err)
+			logger.Printf("| ERR | %12s | %s", "", err)
 			stats.addError(err)
 			continue
 		}
-		log.Printf("Worker#%d\t %d/%d - %d ( %s - %s )", nb, i, nbOfRequests, r.status, url, r.duration)
+
+		logger.Printf("| %d | %12s | GET %s", r.status, r.duration, url)
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
