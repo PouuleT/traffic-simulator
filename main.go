@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 // URLs represents the list of URL to test
@@ -83,6 +86,11 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 	counterDecimals := int(math.Log10(float64(nbOfRequests))) + 1
 	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", counterDecimals)
 
+	// Colors
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintfFunc()
+	yellow := color.New(color.FgYellow).SprintfFunc()
+
 	prefix := fmt.Sprintf(workerFmt, nb)
 	logger := log.New(os.Stdout, prefix, log.LstdFlags)
 	for i := 1; i <= nbOfRequests; i++ {
@@ -90,12 +98,19 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 		url := findRandomURL()
 		r, err := getURL(url)
 		if err != nil {
-			logger.Printf("| ERR | %12s | %s", "", err)
+			logger.Printf("| %s | %12s | %s", red("ERR"), "", err)
 			stats.addError(err)
 			continue
 		}
 
-		logger.Printf("| %d | %12s | GET %s", r.status, r.duration, url)
+		var out string
+		if r.status == http.StatusOK {
+			out = green("%d", r.status)
+		} else {
+			out = yellow("%d", r.status)
+		}
+		logger.Printf("| %s | %12s | GET %s", out, r.duration, url)
+
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
