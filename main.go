@@ -4,11 +4,16 @@ import (
 	"bufio"
 	"errors"
 	"flag"
+	"fmt"
 	"log"
+	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 // URLs represents the list of URL to test
@@ -64,7 +69,7 @@ func main() {
 
 	stats := newStats()
 	var wg sync.WaitGroup
-	for i := 0; i < nbOfClients; i++ {
+	for i := 1; i <= nbOfClients; i++ {
 		wg.Add(1)
 		go work(i, stats, &wg)
 	}
@@ -75,15 +80,37 @@ func main() {
 
 func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 	defer wg.Done()
-	for i := 0; i < nbOfRequests; i++ {
+
+	// Get the padding size : floor(log10(nbOfClients)) + 1
+	workerFmt := fmt.Sprintf("worker#%%0%dd", int(math.Log10(float64(nbOfClients))+1))
+	counterDecimals := int(math.Log10(float64(nbOfRequests))) + 1
+	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", counterDecimals)
+
+	// Colors
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintfFunc()
+	yellow := color.New(color.FgYellow).SprintfFunc()
+
+	prefix := fmt.Sprintf(workerFmt, nb)
+	logger := log.New(os.Stdout, prefix, log.LstdFlags)
+	for i := 1; i <= nbOfRequests; i++ {
+		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
 		url := findRandomURL()
 		r, err := getURL(url)
 		if err != nil {
-			log.Printf("Worker#%d\t %d/%d - ERROR:  %s", nb, i, nbOfRequests, err)
+			logger.Printf("| %s | %12s | %s", red("ERR"), "", err)
 			stats.addError(err)
 			continue
 		}
-		log.Printf("Worker#%d\t %d/%d - %d ( %s - %s )", nb, i, nbOfRequests, r.status, url, r.duration)
+
+		var out string
+		if r.status == http.StatusOK {
+			out = green("%d", r.status)
+		} else {
+			out = yellow("%d", r.status)
+		}
+		logger.Printf("| %s | %12s | GET %s", out, r.duration, url)
+
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
