@@ -28,19 +28,23 @@ type Stats struct {
 	statusStats  map[string]int
 }
 
+// newStats will return an empty Stats object
 func newStats() *Stats {
 	return &Stats{
 		statusStats: map[string]int{},
 	}
 }
 
-func (s *Stats) addError(err error) {
+// addError will add a Request error to the stats
+func (s *Stats) addError(req *Request) {
 	s.Lock()
 	defer s.Unlock()
 
 	s.nbOfRequests++
+	s.addDuration(req)
+
 	var errName string
-	switch e := err.(type) {
+	switch e := req.err.(type) {
 	case *net.DNSError:
 		errName = "DNS lookup error"
 	case *net.DNSConfigError:
@@ -58,14 +62,23 @@ func (s *Stats) addError(err error) {
 	case net.Error:
 		errName = "Net Error"
 	default:
-		errName = err.Error()
+		errName = e.Error()
 	}
 	s.statusStats[errName]++
 }
+
+// addRequest will add a successful request to the stats
 func (s *Stats) addRequest(req *Request) {
 	s.Lock()
 	defer s.Unlock()
 	s.nbOfRequests++
+	s.addDuration(req)
+
+	s.statusStats[http.StatusText(req.status)]++
+}
+
+// addDuration will add the duration of a requests to the stats
+func (s *Stats) addDuration(req *Request) {
 	s.durations.totalDuration += req.duration
 	if s.durations.maxDuration < req.duration {
 		s.durations.maxDuration = req.duration
@@ -73,7 +86,6 @@ func (s *Stats) addRequest(req *Request) {
 	if s.durations.minDuration == 0 || s.durations.minDuration > req.duration {
 		s.durations.minDuration = req.duration
 	}
-	s.statusStats[http.StatusText(req.status)]++
 }
 
 // Render renders the results
