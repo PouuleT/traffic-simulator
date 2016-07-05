@@ -28,12 +28,14 @@ type Stats struct {
 	statusStats  map[string]int
 }
 
+// newStats will return an empty Stats object
 func newStats() *Stats {
 	return &Stats{
 		statusStats: map[string]int{},
 	}
 }
 
+// addError will add a Request error to the stats
 func (s *Stats) addError(req *Request) {
 	s.Lock()
 	defer s.Unlock()
@@ -65,6 +67,7 @@ func (s *Stats) addError(req *Request) {
 	s.statusStats[errName]++
 }
 
+// addRequest will add a successful request to the stats
 func (s *Stats) addRequest(req *Request) {
 	s.Lock()
 	defer s.Unlock()
@@ -74,6 +77,7 @@ func (s *Stats) addRequest(req *Request) {
 	s.statusStats[http.StatusText(req.status)]++
 }
 
+// addDuration will add the duration of a requests to the stats
 func (s *Stats) addDuration(req *Request) {
 	s.durations.totalDuration += req.duration
 	if s.durations.maxDuration < req.duration {

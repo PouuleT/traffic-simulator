@@ -32,6 +32,7 @@ func init() {
 	flag.Parse()
 }
 
+// getURLs will open the given file and read it to get a list of URLs
 func getURLs() error {
 	file, err := os.Open(fileName)
 	if err != nil {
@@ -98,7 +99,7 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 		url := findRandomURL()
 		r := getURL(url)
 		if r.err != nil {
-			logger.Printf("| %s | %12s | %s", red("ERR"), "", r.err)
+			logger.Printf("| %s | %12s | %s", red("ERR"), r.duration, r.err)
 			stats.addError(r)
 			continue
 		}

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"io"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"time"
@@ -13,10 +15,12 @@ type Request struct {
 	err      error
 }
 
+// findRandomURL will return a random URL
 func findRandomURL() string {
 	return URLs[rand.Intn(len(URLs))]
 }
 
+// getURL will get a given URL and return a *Request
 func getURL(url string) *Request {
 	client := http.DefaultClient
 	client.Timeout = 3 * time.Second
@@ -33,6 +37,9 @@ func getURL(url string) *Request {
 		}
 	}
 	defer resp.Body.Close()
+
+	// Read the full body
+	io.Copy(ioutil.Discard, resp.Body)
 	dur = time.Since(t)
 
 	return &Request{
