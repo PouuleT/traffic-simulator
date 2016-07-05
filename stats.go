@@ -34,13 +34,15 @@ func newStats() *Stats {
 	}
 }
 
-func (s *Stats) addError(err error) {
+func (s *Stats) addError(req *Request) {
 	s.Lock()
 	defer s.Unlock()
 
 	s.nbOfRequests++
+	s.addDuration(req)
+
 	var errName string
-	switch e := err.(type) {
+	switch e := req.err.(type) {
 	case *net.DNSError:
 		errName = "DNS lookup error"
 	case *net.DNSConfigError:
@@ -58,14 +60,21 @@ func (s *Stats) addError(err error) {
 	case net.Error:
 		errName = "Net Error"
 	default:
-		errName = err.Error()
+		errName = e.Error()
 	}
 	s.statusStats[errName]++
 }
+
 func (s *Stats) addRequest(req *Request) {
 	s.Lock()
 	defer s.Unlock()
 	s.nbOfRequests++
+	s.addDuration(req)
+
+	s.statusStats[http.StatusText(req.status)]++
+}
+
+func (s *Stats) addDuration(req *Request) {
 	s.durations.totalDuration += req.duration
 	if s.durations.maxDuration < req.duration {
 		s.durations.maxDuration = req.duration
@@ -73,7 +82,6 @@ func (s *Stats) addRequest(req *Request) {
 	if s.durations.minDuration == 0 || s.durations.minDuration > req.duration {
 		s.durations.minDuration = req.duration
 	}
-	s.statusStats[http.StatusText(req.status)]++
 }
 
 // Render renders the results

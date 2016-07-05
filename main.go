@@ -96,10 +96,10 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 	for i := 1; i <= nbOfRequests; i++ {
 		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
 		url := findRandomURL()
-		r, err := getURL(url)
-		if err != nil {
-			logger.Printf("| %s | %12s | %s", red("ERR"), "", err)
-			stats.addError(err)
+		r := getURL(url)
+		if r.err != nil {
+			logger.Printf("| %s | %12s | %s", red("ERR"), "", r.err)
+			stats.addError(r)
 			continue
 		}
 
@@ -109,7 +109,7 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 		} else {
 			out = yellow("%d", r.status)
 		}
-		logger.Printf("| %s | %12s | GET %s", out, r.duration, url)
+		logger.Printf("| %s | %12s | Get %s", out, r.duration, url)
 
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
