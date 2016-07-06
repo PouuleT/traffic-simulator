@@ -83,6 +83,7 @@ func main() {
 
 func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 	defer wg.Done()
+	start := time.Now()
 
 	// Get the padding size : floor(log10(nbOfClients)) + 1
 	workerFmt := fmt.Sprintf("worker#%%0%dd", int(math.Log10(float64(nbOfClients))+1))
@@ -117,4 +118,5 @@ func work(nb int, stats *Stats, wg *sync.WaitGroup) {
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
+	stats.durations.execDuration = time.Since(start)
 }
