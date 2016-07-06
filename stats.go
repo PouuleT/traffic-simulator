@@ -57,7 +57,7 @@ func (s *Stats) addError(req *Request) {
 		if e.Timeout() {
 			errName = "URL Timeout"
 		} else {
-			errName = "Url Error"
+			errName = "URL Error"
 		}
 	case net.Error:
 		errName = "Net Error"
@@ -74,7 +74,13 @@ func (s *Stats) addRequest(req *Request) {
 	s.nbOfRequests++
 	s.addDuration(req)
 
-	s.statusStats[http.StatusText(req.status)]++
+	// If some http statuses has no StatusText, return a simple string with the
+	// http status
+	statusText := http.StatusText(req.status)
+	if statusText == "" {
+		statusText = fmt.Sprintf("%d", req.status)
+	}
+	s.statusStats[statusText]++
 }
 
 // addDuration will add the duration of a requests to the stats
