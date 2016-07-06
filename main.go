@@ -23,11 +23,13 @@ var nbOfClients int
 var nbOfRequests int
 var avgMillisecondsToWait int
 var fileName string
+var timeout int
 
 func init() {
 	flag.IntVar(&nbOfClients, "clients", 10, "number of clients making requests")
 	flag.IntVar(&nbOfRequests, "requests", 10, "number of requests to be made by each clients")
 	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
+	flag.IntVar(&timeout, "timeout", 3, "HTTP timeout in seconds")
 	flag.StringVar(&fileName, "urlSource", "./top-1m.txt", "filepath where to find the URLs")
 	flag.Parse()
 }
