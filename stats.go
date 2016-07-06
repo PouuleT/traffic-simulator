@@ -18,6 +18,7 @@ type DurationStats struct {
 	maxDuration   time.Duration
 	minDuration   time.Duration
 	totalDuration time.Duration
+	execDuration  time.Duration
 }
 
 // Stats represents the stats of the requests
@@ -103,12 +104,14 @@ func (s *Stats) Render() {
 		"Min duration",
 		"Max duration",
 		"Average duration",
+		"Total duration",
 	})
 	table.Append([]string{
 		strconv.Itoa(s.nbOfRequests),
 		s.durations.minDuration.String(),
 		s.durations.maxDuration.String(),
 		(s.durations.totalDuration / time.Duration(s.nbOfRequests)).String(),
+		s.durations.execDuration.String(),
 	})
 
 	fmt.Printf("\nStats :\n")
