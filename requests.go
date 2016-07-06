@@ -23,7 +23,7 @@ func findRandomURL() string {
 // getURL will get a given URL and return a *Request
 func getURL(url string) *Request {
 	client := http.DefaultClient
-	client.Timeout = 3 * time.Second
+	client.Timeout = time.Duration(timeout) * time.Second
 
 	var dur time.Duration
 	t := time.Now()
