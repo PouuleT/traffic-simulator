@@ -7,13 +7,10 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net/http"
 	"net/url"
 	"os"
 	"sync"
 	"time"
-
-	"github.com/fatih/color"
 )
 
 // URLs represents the list of URL to test
@@ -23,6 +20,7 @@ var nbOfClients int
 var nbOfRequests int
 var avgMillisecondsToWait int
 var fileName string
+var trafficType string
 var timeout int
 
 func init() {
@@ -30,6 +28,7 @@ func init() {
 	flag.IntVar(&nbOfRequests, "requests", 10, "number of requests to be made by each clients")
 	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
 	flag.IntVar(&timeout, "timeout", 3, "HTTP timeout in seconds")
+	flag.StringVar(&trafficType, "type", "http", "type of requests http/dns")
 	flag.StringVar(&fileName, "urlSource", "./top-1m.txt", "filepath where to find the URLs")
 	flag.Parse()
 }
@@ -44,7 +43,7 @@ func getURLs() error {
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		u := "http://" + scanner.Text()
+		u := scanner.Text()
 		if _, err := url.Parse(u); err != nil {
 			log.Printf("Invalid URL: %q", u)
 			continue
@@ -65,6 +64,17 @@ func getURLs() error {
 }
 
 func main() {
+	var trafficFunc func(string) *Request
+	switch trafficType {
+	case "http":
+		trafficFunc = getURL
+	case "dns":
+		trafficFunc = lookupURL
+	default:
+		log.Printf("%s trafficType is not handled, only http and dns are", trafficType)
+		os.Exit(0)
+	}
+
 	if err := getURLs(); err != nil {
 		log.Printf("Error while getting the URLs: %q", err)
 		return
@@ -74,49 +84,43 @@ func main() {
 	var wg sync.WaitGroup
 	for i := 1; i <= nbOfClients; i++ {
 		wg.Add(1)
-		go work(i, stats, &wg)
+		go work(i, trafficFunc, stats, &wg)
 	}
 	wg.Wait()
 
 	stats.Render()
 }
 
-func work(nb int, stats *Stats, wg *sync.WaitGroup) {
+// work represents a worker that will run nbOfRequests requests
+func work(nb int, trafficFunc func(string) *Request, stats *Stats, wg *sync.WaitGroup) {
 	defer wg.Done()
 	start := time.Now()
 
-	// Get the padding size : floor(log10(nbOfClients)) + 1
-	workerFmt := fmt.Sprintf("worker#%%0%dd", int(math.Log10(float64(nbOfClients))+1))
-	counterDecimals := int(math.Log10(float64(nbOfRequests))) + 1
-	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", counterDecimals)
-
-	// Colors
-	red := color.New(color.FgRed).SprintFunc()
-	green := color.New(color.FgGreen).SprintfFunc()
-	yellow := color.New(color.FgYellow).SprintfFunc()
+	workerFmt := fmt.Sprintf("worker#%%0%dd", getPadding(nbOfClients))
+	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", getPadding(nbOfRequests))
 
 	prefix := fmt.Sprintf(workerFmt, nb)
-	logger := log.New(os.Stdout, prefix, log.LstdFlags)
+	logger := log.New(os.Stdout, prefix, 0)
 	for i := 1; i <= nbOfRequests; i++ {
 		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
 		url := findRandomURL()
-		r := getURL(url)
+		r := trafficFunc(url)
 		if r.err != nil {
 			logger.Printf("| %s | %12s | %s", red("ERR"), r.duration, r.err)
 			stats.addError(r)
 			continue
 		}
 
-		var out string
-		if r.status == http.StatusOK {
-			out = green("%d", r.status)
-		} else {
-			out = yellow("%d", r.status)
-		}
-		logger.Printf("| %s | %12s | Get %s", out, r.duration, url)
+		logger.Print(r.Log())
 
 		stats.addRequest(r)
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
 	stats.durations.execDuration = time.Since(start)
+}
+
+// getPadding returns the padding size of the int given
+func getPadding(nb int) int {
+	// Get the padding size : floor(log10(nb)) + 1
+	return int(math.Log10(float64(nb))) + 1
 }
