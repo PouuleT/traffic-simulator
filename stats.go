@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -75,13 +74,7 @@ func (s *Stats) addRequest(req *Request) {
 	s.nbOfRequests++
 	s.addDuration(req)
 
-	// If some http statuses has no StatusText, return a simple string with the
-	// http status
-	statusText := http.StatusText(req.status)
-	if statusText == "" {
-		statusText = fmt.Sprintf("%d", req.status)
-	}
-	s.statusStats[statusText]++
+	s.statusStats[req.status]++
 }
 
 // addDuration will add the duration of a requests to the stats
