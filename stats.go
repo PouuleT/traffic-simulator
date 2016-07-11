@@ -91,7 +91,7 @@ func (s *Stats) addDuration(req *Request) {
 // Render renders the results
 func (s *Stats) Render() {
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAlignment(tablewriter.ALIGN_CENTRE)
+	table.SetAlignment(tablewriter.ALIGN_CENTER)
 	table.SetHeader([]string{
 		"Number of requests ",
 		"Min duration",
@@ -111,7 +111,7 @@ func (s *Stats) Render() {
 	table.Render()
 
 	statusTable := tablewriter.NewWriter(os.Stdout)
-	statusTable.SetAlignment(tablewriter.ALIGN_CENTRE)
+	statusTable.SetAlignment(tablewriter.ALIGN_CENTER)
 	statusTable.SetHeader([]string{"Result", "Count"})
 	for key, value := range s.statusStats {
 		statusTable.Append([]string{key, strconv.Itoa(value)})

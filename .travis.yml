@@ -1,0 +1,18 @@
+language: go
+go:
+- 1.6
+sudo: false
+before_install:
+- go get github.com/mitchellh/gox
+- go get -v ./...
+script:
+- gox -osarch="linux/arm" -osarch="linux/amd64" .
+deploy:
+  provider: releases
+  api_key:
+    secure: CWe5/PBQQhZxTj9YlzxVfs3ynRmIGgQbqKq/MgmXuaH5xXZW3aI/BErZ0+beWHOHTuLLU1RvX2V1vTc2Q/m5hIDiNte7zWqssRst5JbCSVTVmbjCE3p/XJC/OXTqqFGYUf0fDi3GfNQFv/a7WlHbHDbPK6Iv04BysJ24kqPgqVSTee81QBzlcM4i1KcySqUCxGkrQK8/u0dSn0QVbxlHB3fCEnpjZ7/X5tQtn5ZSazbu94EzQd/RwWudEnf0BkcJnRXUMLXtIAkfK0CmGz1fxrl4sCDc9GsenjXzBLDlPXzhWP49cBzVqYy9Pnn8330BY2VvSmr/Y/dvQ4ZUOYvyuYLZtQ3I+RZWjdosBWl3HNHB/6RW1Vqr3aWqr2bzAepeqN/DPn1uzeL6cUp5bNSuVCv+562H+0EFtxIDImfZxjggABIIbuF9TISpBSvL5Vooq7khZFTmNq0qa8kUKjmbPcnYrnSkmOhNvafvedC84ypFl+XyKwpU4TO04ALWl9j7xW0cQbvYF5Mr7+8l3ojlLjnCvYUHloc9O7tlsP0OVrogjeG8mN9koPo1+fn1yj84soucXZEvaHa7+ojan9qUB36+kNq6XYds7TqfS6qThwMRqsIA+fD6yUggIvZbCL6kf81hVEJoH7kn4+L5KDNWJo/FCkdPbAIxQLMHl+jrKxc=
+  file:
+    - traffic-simulator_linux_amd64
+    - traffic-simulator_linux_arm
+  on:
+    tags: true
