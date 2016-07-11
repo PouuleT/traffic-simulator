@@ -29,12 +29,18 @@ func init() {
 	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
 	flag.IntVar(&timeout, "timeout", 3, "HTTP timeout in seconds")
 	flag.StringVar(&trafficType, "type", "http", "type of requests http/dns")
-	flag.StringVar(&fileName, "urlSource", "./top-1m.txt", "filepath where to find the URLs")
+	flag.StringVar(&fileName, "urlSource", "", "optional filepath where to find the URLs")
 	flag.Parse()
 }
 
 // getURLs will open the given file and read it to get a list of URLs
 func getURLs() error {
+	// If no fileName is given, use the defaultURLs variable
+	if fileName == "" {
+		URLs = defaultURLs
+		return nil
+	}
+
 	file, err := os.Open(fileName)
 	if err != nil {
 		return err
