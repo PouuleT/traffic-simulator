@@ -1,5 +1,14 @@
 package main
 
+import (
+	"bufio"
+	"errors"
+	"log"
+	"math/rand"
+	"net/url"
+	"os"
+)
+
 var defaultURLs = []string{
 	"123movies.to",
 	"1337x.to",
@@ -864,4 +873,45 @@ var defaultURLs = []string{
 	"zone-telechargement.com",
 	"zougla.gr",
 	"zulily.com",
+}
+
+// getURLs will open the given file and read it to get a list of URLs
+func getURLs() error {
+	// If no fileName is given, use the defaultURLs variable
+	if fileName == "" {
+		URLs = defaultURLs
+		return nil
+	}
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		u := scanner.Text()
+		if _, err := url.Parse(u); err != nil {
+			log.Printf("Invalid URL: %q", u)
+			continue
+		}
+
+		URLs = append(URLs, u)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if len(URLs) == 0 {
+		return errors.New("no URL found")
+	}
+
+	return nil
+}
+
+// findRandomURL will return a random URL
+func findRandomURL() string {
+	return URLs[rand.Intn(len(URLs))]
 }
