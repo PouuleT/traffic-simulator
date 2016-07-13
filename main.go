@@ -4,6 +4,8 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"math/rand"
+	"time"
 )
 
 var (
@@ -16,17 +18,24 @@ var (
 	fileName              string
 	trafficType           string
 	timeout               int
+	seed                  int64
 	ErrInvalidTrafficType = errors.New("Invalid traffic type")
 )
 
 func init() {
+	// Parse the arguments
 	flag.IntVar(&nbOfClients, "clients", 10, "number of clients making requests")
 	flag.IntVar(&nbOfRequests, "requests", 10, "number of requests to be made by each clients")
 	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
 	flag.IntVar(&timeout, "timeout", 3, "HTTP timeout in seconds")
+	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "seed for the random")
 	flag.StringVar(&trafficType, "type", "http", "type of requests http/dns")
 	flag.StringVar(&fileName, "urlSource", "", "optional filepath where to find the URLs")
 	flag.Parse()
+
+	log.SetFlags(0)
+	log.Println("Random URLs using seed", seed)
+	rand.Seed(seed)
 }
 
 func main() {
