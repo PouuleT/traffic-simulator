@@ -13,7 +13,7 @@ import (
 	"github.com/dustin/go-humanize"
 )
 
-// HTTPRequest represents a requsest reponse, with the return code and the duration
+// HTTPRequest represents a request response, with the return code and the duration
 type HTTPRequest struct {
 	status      string
 	statusShort string
