@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// DNSRequest represents a requsest reponse, with the return code and the duration
+// DNSRequest represents a request response, with the return code and the duration
 type DNSRequest struct {
 	status      string
 	statusShort string

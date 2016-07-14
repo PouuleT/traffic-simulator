@@ -11,6 +11,8 @@ import (
 var (
 	// URLs represents the list of URL to test
 	URLs = []string{}
+	// ErrInvalidTrafficType is returned if the traffic type is invalid
+	ErrInvalidTrafficType = errors.New("Invalid traffic type")
 
 	nbOfClients           int
 	nbOfRequests          int
@@ -19,7 +21,6 @@ var (
 	trafficType           string
 	timeout               int
 	seed                  int64
-	ErrInvalidTrafficType = errors.New("Invalid traffic type")
 )
 
 func init() {
