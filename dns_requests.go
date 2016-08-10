@@ -20,9 +20,9 @@ type DNSRequest struct {
 // String will return the string representing the request
 func (r *DNSRequest) String() string {
 	if r.IsError() {
-		return fmt.Sprintf("| %s | %12s | Get %s : %s", red("ERR"), r.duration, r.url, r.Error())
+		return fmt.Sprintf("| %s | %13s | Get %s : %s", red("ERR"), r.duration, r.url, r.Error())
 	}
-	return fmt.Sprintf("| %s | %12s | Get %s", criticityColor[r.criticity](r.status), r.duration, r.url)
+	return fmt.Sprintf("| %s | %13s | Get %s", criticityColor[r.criticity](r.status), r.duration, r.url)
 }
 
 // Duration returns the duration of the request

@@ -27,9 +27,9 @@ type HTTPRequest struct {
 // String will return the string representing the request
 func (r *HTTPRequest) String() string {
 	if r.IsError() {
-		return fmt.Sprintf("| %s | %12s | Get %s : %s", red("ERR"), r.duration, r.url, r.Error())
+		return fmt.Sprintf("| %s | %13s | Get %s : %s ( %s )", red("ERR"), r.duration, r.url, r.Error(), humanize.Bytes(uint64(r.size)))
 	}
-	return fmt.Sprintf("| %s | %12s | Get %s ( %s )", criticityColor[r.criticity](r.statusShort), r.duration, r.url, humanize.Bytes(uint64(r.size)))
+	return fmt.Sprintf("| %s | %13s | Get %s ( %s )", criticityColor[r.criticity](r.statusShort), r.duration, r.url, humanize.Bytes(uint64(r.size)))
 }
 
 // Duration returns the duration of the request
@@ -112,6 +112,7 @@ func getURL(url string) Request {
 			duration:  dur,
 			err:       err,
 			criticity: Critical,
+			size:      len,
 		}
 	}
 	// Record the duration of the request
