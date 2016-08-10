@@ -35,13 +35,13 @@ func (s *HTTPStats) AddRequest(req Request) {
 	defer s.Unlock()
 	s.nbOfRequests++
 	s.addDuration(req)
+	s.totalSize += req.Size()
 
 	if req.IsError() {
 		s.statusStats[req.Error()]++
 		return
 	}
 	s.statusStats[req.Status()]++
-	s.totalSize += req.Size()
 }
 
 // addDuration will add the duration of a requests to the stats
