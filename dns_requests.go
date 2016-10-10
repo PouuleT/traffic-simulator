@@ -26,12 +26,12 @@ func (r *DNSRequest) String() string {
 }
 
 // Duration returns the duration of the request
-func (r *DNSRequest) Duration() time.Duration {
+func (r DNSRequest) Duration() time.Duration {
 	return r.duration
 }
 
 // Error implements the error interface
-func (r *DNSRequest) Error() string {
+func (r DNSRequest) Error() string {
 	var errName string
 
 	switch e := r.err.(type) {
@@ -58,17 +58,17 @@ func (r *DNSRequest) Error() string {
 }
 
 // Size returns the size of the request
-func (r *DNSRequest) Size() int64 {
+func (r DNSRequest) Size() int64 {
 	return 0
 }
 
 // Status returns the status of the request
-func (r *DNSRequest) Status() string {
+func (r DNSRequest) Status() string {
 	return r.status
 }
 
 // IsError returns true if the request is an error
-func (r *DNSRequest) IsError() bool {
+func (r DNSRequest) IsError() bool {
 	return r.err != nil
 }
 
