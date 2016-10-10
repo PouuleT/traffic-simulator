@@ -16,16 +16,19 @@ import (
 type HTTPStats struct {
 	DurationStats
 	sync.Mutex
-	nbOfRequests int
-	statusStats  map[string]int
-	totalSize    int64
+	nbOfRequests     int
+	successRequests  int
+	statusStats      map[string]int
+	totalSize        int64
+	responseTimeline *ResponseTimeline
 }
 
 // newHTTPStats will return an empty Stats object
 func newHTTPStats() Stats {
 	return &HTTPStats{
-		DurationStats: DurationStats{},
-		statusStats:   map[string]int{},
+		DurationStats:    DurationStats{},
+		statusStats:      map[string]int{},
+		responseTimeline: &ResponseTimeline{},
 	}
 }
 
@@ -41,11 +44,17 @@ func (s *HTTPStats) AddRequest(req Request) {
 		s.statusStats[req.Error()]++
 		return
 	}
+	s.successRequests++
 	s.statusStats[req.Status()]++
 }
 
 // addDuration will add the duration of a requests to the stats
 func (s *HTTPStats) addDuration(req Request) {
+	r, ok := req.(*HTTPRequest)
+	if !ok {
+		fmt.Println("OUPS")
+		return
+	}
 	s.totalDuration += req.Duration()
 	if s.maxDuration < req.Duration() {
 		s.maxDuration = req.Duration()
@@ -53,6 +62,14 @@ func (s *HTTPStats) addDuration(req Request) {
 	if s.minDuration == 0 || s.minDuration > req.Duration() {
 		s.minDuration = req.Duration()
 	}
+	if r.responseTimeline == nil {
+		return
+	}
+	s.responseTimeline.DNSLookup += r.responseTimeline.DNSLookup
+	s.responseTimeline.TCPConnection += r.responseTimeline.TCPConnection
+	s.responseTimeline.EstablishingConnection += r.responseTimeline.EstablishingConnection
+	s.responseTimeline.ServerProcessing += r.responseTimeline.ServerProcessing
+	s.responseTimeline.ContentTransfer += r.responseTimeline.ContentTransfer
 }
 
 // Render renders the results
@@ -90,6 +107,27 @@ func (s *HTTPStats) Render() {
 
 	fmt.Printf("\nStatuses :\n")
 	statusTable.Render()
+
+	timeTable := tablewriter.NewWriter(os.Stdout)
+	timeTable.SetHeader([]string{"Step", "Average duration"})
+	timeTable.SetAlignment(tablewriter.ALIGN_CENTER)
+	timeTable.Append([]string{
+		"DNSLookup", (s.responseTimeline.DNSLookup / time.Duration(s.successRequests)).String(),
+	})
+	timeTable.Append([]string{
+		"TCPConnection", (s.responseTimeline.TCPConnection / time.Duration(s.successRequests)).String(),
+	})
+	timeTable.Append([]string{
+		"EstablishingConnection", (s.responseTimeline.EstablishingConnection / time.Duration(s.successRequests)).String(),
+	})
+	timeTable.Append([]string{
+		"ServerProcessing", (s.responseTimeline.ServerProcessing / time.Duration(s.successRequests)).String(),
+	})
+	timeTable.Append([]string{
+		"ContentTransfer", (s.responseTimeline.ContentTransfer / time.Duration(s.successRequests)).String(),
+	})
+
+	timeTable.Render()
 }
 
 // SetDuration will set the total duration of the simulation
