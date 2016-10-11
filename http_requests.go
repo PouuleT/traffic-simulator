@@ -181,9 +181,6 @@ func getURL(url string) Request {
 				log.Fatalf("unable to connect to host %v: %v", addr, err)
 			}
 			connectDone = time.Now()
-
-			// log.Println("rewriting connectDone to ", time.Now())
-			// log.Printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
 		},
 		GotConn:              func(_ httptrace.GotConnInfo) { gotConn = time.Now() },
 		GotFirstResponseByte: func() { gotByte = time.Now() },
@@ -213,11 +210,13 @@ func getURL(url string) Request {
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   time.Duration(timeout) * time.Second,
-		// CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		// 	// always refuse to follow redirects, visit does that
-		// 	// manually if required.
-		// 	return http.ErrUseLastResponse
-		// },
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Check if we need to follow redirect or no
+			if followHttpRedirect {
+				return nil
+			}
+			return http.ErrUseLastResponse
+		},
 	}
 
 	resp, err := client.Do(req)

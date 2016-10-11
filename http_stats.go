@@ -127,6 +127,7 @@ func (s *HTTPStats) Render() {
 		"ContentTransfer", (s.responseTimeline.ContentTransfer / time.Duration(s.successRequests)).String(),
 	})
 
+	fmt.Printf("\nRequest details :\n")
 	timeTable.Render()
 }
 

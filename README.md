@@ -18,6 +18,8 @@
       seed for the random (default 1468538248366626679)
   -timeout int
       HTTP timeout in seconds (default 3)
+  -followRedirect
+      follow http redirects or not (default true)
   -type string
       type of requests http/dns (default "http")
   -urlSource string
