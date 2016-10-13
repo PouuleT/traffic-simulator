@@ -89,7 +89,7 @@ func (s *HTTPStats) Render() {
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
-		(s.totalDuration / time.Duration(s.nbOfRequests)).String(),
+		getAvgDuration(s.totalDuration, s.nbOfRequests),
 		s.execDuration.String(),
 		fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(time.Duration(s.totalSize))/float64(s.execDuration)*math.Pow10(9)))),
 		fmt.Sprintf("%s", humanize.Bytes(uint64(s.totalSize))),
@@ -112,19 +112,19 @@ func (s *HTTPStats) Render() {
 	timeTable.SetHeader([]string{"Step", "Average duration"})
 	timeTable.SetAlignment(tablewriter.ALIGN_CENTER)
 	timeTable.Append([]string{
-		"DNSLookup", (s.responseTimeline.DNSLookup / time.Duration(s.successRequests)).String(),
+		"DNSLookup", getAvgDuration(s.responseTimeline.DNSLookup, s.successRequests),
 	})
 	timeTable.Append([]string{
-		"TCPConnection", (s.responseTimeline.TCPConnection / time.Duration(s.successRequests)).String(),
+		"TCPConnection", getAvgDuration(s.responseTimeline.TCPConnection, s.successRequests),
 	})
 	timeTable.Append([]string{
-		"EstablishingConnection", (s.responseTimeline.EstablishingConnection / time.Duration(s.successRequests)).String(),
+		"EstablishingConnection", getAvgDuration(s.responseTimeline.EstablishingConnection, s.successRequests),
 	})
 	timeTable.Append([]string{
-		"ServerProcessing", (s.responseTimeline.ServerProcessing / time.Duration(s.successRequests)).String(),
+		"ServerProcessing", getAvgDuration(s.responseTimeline.ServerProcessing, s.successRequests),
 	})
 	timeTable.Append([]string{
-		"ContentTransfer", (s.responseTimeline.ContentTransfer / time.Duration(s.successRequests)).String(),
+		"ContentTransfer", getAvgDuration(s.responseTimeline.ContentTransfer, s.successRequests),
 	})
 
 	fmt.Printf("\nRequest details :\n")
