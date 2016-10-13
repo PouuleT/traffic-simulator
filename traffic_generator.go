@@ -101,3 +101,10 @@ func getPadding(nb int) int {
 	// Get the padding size : floor(log10(nb)) + 1
 	return int(math.Log10(float64(nb))) + 1
 }
+
+func getAvgDuration(total time.Duration, number int) string {
+	if number == 0 {
+		return "NaN"
+	}
+	return (total / time.Duration(number)).String()
+}
