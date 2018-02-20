@@ -179,7 +179,6 @@ func getURL(url string) Request {
 		ConnectDone: func(net, addr string, err error) {
 			if err != nil {
 				log.Printf("unable to connect to host %v: %v", addr, err)
-				return
 			}
 			connectDone = time.Now()
 		},
