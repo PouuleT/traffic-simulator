@@ -67,7 +67,7 @@ func (r HTTPRequest) Error() string {
 		if e.Timeout() {
 			errName = "URL Timeout"
 		} else {
-			errName = "URL Error"
+			errName = fmt.Sprintf("URL Error: %s", e.Error())
 		}
 	case net.Error:
 		errName = "Net Error"
