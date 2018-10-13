@@ -93,69 +93,6 @@ func (r HTTPRequest) IsError() bool {
 }
 
 // getURL will get a given URL and return a Request
-func oldgetURL(url string) Request {
-	// Set the HTTP client
-	client := http.DefaultClient
-	client.Timeout = time.Duration(timeout) * time.Second
-	url = "http://" + url
-
-	var dur time.Duration
-	// Initiate the time before the request
-
-	t := time.Now()
-	// Do the request
-	resp, err := client.Get(url)
-	if err != nil {
-		dur = time.Since(t)
-		return &HTTPRequest{
-			url:       url,
-			duration:  dur,
-			err:       err,
-			criticity: Critical,
-		}
-	}
-	defer resp.Body.Close()
-
-	// Read the full body
-	len, err := io.Copy(ioutil.Discard, resp.Body)
-	if err != nil {
-		dur = time.Since(t)
-		return &HTTPRequest{
-			url:       url,
-			duration:  dur,
-			err:       err,
-			criticity: Critical,
-			size:      len,
-		}
-	}
-	// Record the duration of the request
-	dur = time.Since(t)
-
-	// If some http statuses has no StatusText, return a simple string with the
-	// http status
-	statusText := http.StatusText(resp.StatusCode)
-	if statusText == "" {
-		statusText = fmt.Sprintf("%d", resp.StatusCode)
-	}
-
-	var reqCriticity criticityLevel
-	if resp.StatusCode == http.StatusOK {
-		reqCriticity = Success
-	} else {
-		reqCriticity = Warning
-	}
-
-	return &HTTPRequest{
-		url:         url,
-		duration:    dur,
-		status:      statusText,
-		statusShort: strconv.Itoa(resp.StatusCode),
-		criticity:   reqCriticity,
-		size:        len,
-	}
-}
-
-// getURL will get a given URL and return a Request
 func getURL(url string) Request {
 	var dnsStart, dnsDone, connectStart, connectDone, gotConn, gotByte time.Time
 	url = "http://" + url
