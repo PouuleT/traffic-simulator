@@ -170,7 +170,7 @@ func getURL(url string) Request {
 	defer resp.Body.Close()
 
 	// Read the full body
-	len, err := io.Copy(ioutil.Discard, resp.Body)
+	length, err := io.Copy(ioutil.Discard, resp.Body)
 	if err != nil {
 		dur = time.Since(t)
 		return &HTTPRequest{
@@ -178,7 +178,7 @@ func getURL(url string) Request {
 			duration:  dur,
 			err:       err,
 			criticity: Critical,
-			size:      len,
+			size:      length,
 		}
 	}
 	// Record the duration of the request
@@ -213,7 +213,7 @@ func getURL(url string) Request {
 		status:           statusText,
 		statusShort:      strconv.Itoa(resp.StatusCode),
 		criticity:        reqCriticity,
-		size:             len,
+		size:             length,
 		responseTimeline: &responseTimeline,
 	}
 }
