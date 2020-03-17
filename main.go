@@ -12,7 +12,7 @@ var (
 	// URLs represents the list of URL to test
 	URLs = []string{}
 	// ErrInvalidTrafficType is returned if the traffic type is invalid
-	ErrInvalidTrafficType = errors.New("Invalid traffic type")
+	ErrInvalidTrafficType = errors.New("invalid traffic type")
 
 	nbOfClients           int
 	nbOfRequests          int

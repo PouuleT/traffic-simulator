@@ -92,7 +92,7 @@ func (s *HTTPStats) Render() {
 		getAvgDuration(s.totalDuration, s.nbOfRequests),
 		s.execDuration.String(),
 		fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(time.Duration(s.totalSize))/float64(s.execDuration)*math.Pow10(9)))),
-		fmt.Sprintf("%s", humanize.Bytes(uint64(s.totalSize))),
+		humanize.Bytes(uint64(s.totalSize)),
 	})
 
 	fmt.Printf("\nStats :\n")
