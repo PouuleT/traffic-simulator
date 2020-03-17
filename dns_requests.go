@@ -9,12 +9,11 @@ import (
 
 // DNSRequest represents a request response, with the return code and the duration
 type DNSRequest struct {
-	status      string
-	statusShort string
-	url         string
-	criticity   criticityLevel
-	duration    time.Duration
-	err         error
+	status    string
+	url       string
+	criticity criticityLevel
+	duration  time.Duration
+	err       error
 }
 
 // String will return the string representing the request
