@@ -1,0 +1,40 @@
+name: Build
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin]
+        goarch: [amd64, arm]
+        exclude:
+        # excludes darwin arm
+        - goos: darwin
+          goarch: arm
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: 1.14.1
+
+      - name: Check out source code
+        uses: actions/checkout@v2
+
+      - name: Build
+        env:
+          GOARCH: ${{ matrix.goarch }}
+          GOOS: ${{ matrix.goos }}
+        run: go build -o traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }} .
+
+      - name: Create Artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
+
+      - name: Staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck
+          staticcheck ./...
