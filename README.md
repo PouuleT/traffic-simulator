@@ -1,6 +1,6 @@
 # Traffic Simulator
 
-[![Build Status](https://travis-ci.org/PouuleT/traffic-simulator.svg?branch=master)](https://travis-ci.org/PouuleT/traffic-simulator)
+[![Build Status](https://github.com/PouuleT/traffic-simulator/workflows/Build/badge.svg?branch=master)](https://github.com/PouuleT/traffic-simulator/workflows/Build/badge.svg?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/PouuleT/traffic-simulator)](https://goreportcard.com/report/github.com/PouuleT/traffic-simulator)
 
 > Simple HTTP and DNS traffic generator written in go
