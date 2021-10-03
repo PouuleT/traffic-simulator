@@ -45,14 +45,12 @@ func main() {
 	// Create the TrafficGenerator
 	trafficGenerator, err := NewTrafficGenerator(trafficType)
 	if err != nil {
-		log.Printf("Error while creating TrafficGenerator: %q", err)
-		return
+		log.Fatalf("Error while creating TrafficGenerator: %q", err)
 	}
 
 	// Get the URLs
 	if err := getURLs(); err != nil {
-		log.Printf("Error while getting the URLs: %q", err)
-		return
+		log.Fatalf("Error while getting the URLs: %q", err)
 	}
 
 	// Generate the traffic
