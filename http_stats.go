@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strconv"
@@ -52,8 +53,7 @@ func (s *HTTPStats) AddRequest(req Request) {
 func (s *HTTPStats) addDuration(req Request) {
 	r, ok := req.(*HTTPRequest)
 	if !ok {
-		fmt.Println("OUPS")
-		return
+		log.Fatal("Handling an unexpected request")
 	}
 	s.totalDuration += req.Duration()
 	if s.maxDuration < req.Duration() {
