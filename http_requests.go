@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -170,7 +169,7 @@ func getURL(url string) Request {
 	defer resp.Body.Close()
 
 	// Read the full body
-	length, err := io.Copy(ioutil.Discard, resp.Body)
+	length, err := io.Copy(io.Discard, resp.Body)
 	if err != nil {
 		dur = time.Since(t)
 		return &HTTPRequest{
