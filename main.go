@@ -38,7 +38,7 @@ func init() {
 
 	log.SetFlags(0)
 	log.Println("Random URLs using seed", seed)
-	rand.Seed(seed)
+	rand.New(rand.NewSource(seed))
 }
 
 func main() {
