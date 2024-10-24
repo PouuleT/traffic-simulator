@@ -18,13 +18,13 @@ jobs:
         - goos: darwin
           goarch: arm
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.21.3
-
       - name: Check out source code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.1
 
       - name: Build
         env:
@@ -33,7 +33,7 @@ jobs:
         run: go build -o traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }} .
 
       - name: Create Artifact
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
           path: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
