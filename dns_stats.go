@@ -53,9 +53,8 @@ func (s *DNSStats) addDuration(req Request) {
 
 // Render renders the results
 func (s *DNSStats) Render() {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAlignment(tablewriter.ALIGN_CENTER)
-	table.SetHeader([]string{
+	table := tablewriter.NewTable(os.Stdout)
+	table.Header([]string{
 		"Number of requests ",
 		"Min duration",
 		"Max duration",
@@ -73,9 +72,8 @@ func (s *DNSStats) Render() {
 	fmt.Printf("\nStats :\n")
 	table.Render()
 
-	statusTable := tablewriter.NewWriter(os.Stdout)
-	statusTable.SetAlignment(tablewriter.ALIGN_CENTER)
-	statusTable.SetHeader([]string{"Result", "Count"})
+	statusTable := tablewriter.NewTable(os.Stdout)
+	statusTable.Header([]string{"Result", "Count"})
 	for key, value := range s.statusStats {
 		statusTable.Append([]string{key, strconv.Itoa(value)})
 	}
