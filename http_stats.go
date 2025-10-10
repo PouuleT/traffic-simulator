@@ -74,9 +74,8 @@ func (s *HTTPStats) addDuration(req Request) {
 
 // Render renders the results
 func (s *HTTPStats) Render() {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAlignment(tablewriter.ALIGN_CENTER)
-	table.SetHeader([]string{
+	table := tablewriter.NewTable(os.Stdout)
+	table.Header([]string{
 		"Number of requests ",
 		"Min duration",
 		"Max duration",
@@ -98,9 +97,8 @@ func (s *HTTPStats) Render() {
 	fmt.Printf("\nStats :\n")
 	table.Render()
 
-	statusTable := tablewriter.NewWriter(os.Stdout)
-	statusTable.SetAlignment(tablewriter.ALIGN_CENTER)
-	statusTable.SetHeader([]string{"Result", "Count"})
+	statusTable := tablewriter.NewTable(os.Stdout)
+	statusTable.Header([]string{"Result", "Count"})
 	for key, value := range s.statusStats {
 		statusTable.Append([]string{key, strconv.Itoa(value)})
 	}
@@ -108,9 +106,8 @@ func (s *HTTPStats) Render() {
 	fmt.Printf("\nStatuses :\n")
 	statusTable.Render()
 
-	timeTable := tablewriter.NewWriter(os.Stdout)
-	timeTable.SetHeader([]string{"Step", "Average duration"})
-	timeTable.SetAlignment(tablewriter.ALIGN_CENTER)
+	timeTable := tablewriter.NewTable(os.Stdout)
+	timeTable.Header([]string{"Step", "Average duration"})
 	timeTable.Append([]string{
 		"DNSLookup", getAvgDuration(s.responseTimeline.DNSLookup, s.successRequests),
 	})
