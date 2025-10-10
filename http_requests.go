@@ -111,7 +111,7 @@ func getURL(url string) Request {
 			}
 			connectStart = time.Now()
 		},
-		ConnectDone: func(net, addr string, err error) {
+		ConnectDone: func(_, addr string, err error) {
 			if err != nil {
 				log.Printf("unable to connect to host %v: %v", addr, err)
 			}
@@ -145,9 +145,9 @@ func getURL(url string) Request {
 	client := &http.Client{
 		Transport: tr,
 		Timeout:   time.Duration(timeout) * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
 			// Check if we need to follow redirect or no
-			if followHttpRedirect {
+			if followHTTPRedirect {
 				return nil
 			}
 			return http.ErrUseLastResponse

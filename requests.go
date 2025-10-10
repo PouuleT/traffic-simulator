@@ -23,7 +23,7 @@ var red = color.New(color.FgRed).SprintfFunc()
 var green = color.New(color.FgGreen).SprintfFunc()
 var yellow = color.New(color.FgYellow).SprintfFunc()
 
-var criticityColor = map[criticityLevel]func(string, ...interface{}) string{
+var criticityColor = map[criticityLevel]func(string, ...any) string{
 	Success:  green,
 	Warning:  yellow,
 	Critical: red,
