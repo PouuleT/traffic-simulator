@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -51,29 +52,27 @@ func (r HTTPRequest) Duration() time.Duration {
 
 // Error returns the error of the request
 func (r HTTPRequest) Error() string {
-	var errName string
-
-	switch e := r.err.(type) {
-	case *net.DNSError:
-		errName = "DNS lookup error"
-	case *net.DNSConfigError:
-		errName = "DNS config error"
-	case *net.AddrError:
-		errName = "Addr Error"
-	case *net.OpError:
-		errName = "Op Error"
-	case *url.Error:
-		if e.Timeout() {
-			errName = "URL Timeout"
-		} else {
-			errName = fmt.Sprintf("URL Error: %s", e.Error())
-		}
-	case net.Error:
-		errName = "Net Error"
-	default:
-		errName = e.Error()
+	if r.err == nil {
+		return "<nil>"
 	}
-	return errName
+
+	var e *url.Error
+	switch {
+	case errors.As(r.err, &e) && e.Timeout():
+		return "URL timeout"
+	case errors.As(r.err, new(*net.DNSError)):
+		return "DNS lookup error"
+	case errors.As(r.err, new(*net.DNSConfigError)):
+		return "DNS config error"
+	case errors.As(r.err, new(*net.AddrError)):
+		return "Address error"
+	case errors.As(r.err, new(*net.OpError)):
+		return "Operation error"
+	case errors.As(r.err, new(net.Error)):
+		return "Network error"
+	default:
+		return r.err.Error()
+	}
 }
 
 // Size returns the size of the request
