@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"sync"
@@ -84,13 +83,14 @@ func (s *HTTPStats) Render() {
 		"Avg speed",
 		"Total size",
 	})
+
 	table.Append([]string{
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
 		getAvgDuration(s.totalDuration, s.nbOfRequests),
 		s.execDuration.String(),
-		fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(time.Duration(s.totalSize))/float64(s.execDuration)*math.Pow10(9)))),
+		fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(s.totalSize)/s.execDuration.Seconds()))),
 		humanize.Bytes(uint64(s.totalSize)),
 	})
 

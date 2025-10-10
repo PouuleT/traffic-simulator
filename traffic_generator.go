@@ -26,7 +26,7 @@ type Worker struct {
 
 var trafficMap = map[string]func(string) Request{
 	"http": getURL,
-	"dns":  lookupURL,
+	"dns":  lookupHost,
 }
 
 var statsMap = map[string]func() Stats{
@@ -34,7 +34,7 @@ var statsMap = map[string]func() Stats{
 	"dns":  newDNSStats,
 }
 
-var exitChan = make(chan struct{})
+var exitChan = make(chan struct{}, nbOfClients)
 
 // NewTrafficGenerator will return a new TrafficGenerator object
 func NewTrafficGenerator(trafficType string) (*TrafficGenerator, error) {
@@ -56,8 +56,7 @@ func NewTrafficGenerator(trafficType string) (*TrafficGenerator, error) {
 func (trafficGen *TrafficGenerator) Generate() {
 	// Create a channel that will listen to SIGINT / SIGTERM
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT)
-	signal.Notify(c, syscall.SIGTERM)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
 	for i := 1; i <= nbOfClients; i++ {
 		trafficGen.wg.Add(1)
@@ -85,7 +84,7 @@ func (trafficGen *TrafficGenerator) Generate() {
 		case sig := <-c:
 			// We listen for signals
 			switch sig {
-			case syscall.SIGINT, syscall.SIGKILL:
+			case syscall.SIGINT, syscall.SIGTERM:
 				// If it's the second time we get a signal, quit
 				if forceShutdown {
 					os.Exit(1)
@@ -145,6 +144,9 @@ func (w *Worker) work() {
 	prefix := fmt.Sprintf(workerFmt, w.id)
 	logger := log.New(os.Stdout, prefix, 0)
 
+	defer func() {
+		w.trafficGen.stats.SetDuration(time.Since(start))
+	}()
 	// Repeat nbOfRequests requests
 	for i := 1; i <= nbOfRequests; i++ {
 		// If we got an exit signal, quit
@@ -152,10 +154,8 @@ func (w *Worker) work() {
 			return
 		}
 		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
-		// Find an URL
-		url := findRandomURL()
-		// Make the request
-		r := w.trafficGen.trafficFunc(url)
+		// Find an URL and make the request
+		r := w.trafficGen.trafficFunc(findRandomURL())
 		// Add the request to the stats
 		w.trafficGen.stats.AddRequest(r)
 		// Print the request
@@ -163,12 +163,14 @@ func (w *Worker) work() {
 
 		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
 	}
-	w.trafficGen.stats.SetDuration(time.Since(start))
 }
 
 // getPadding returns the padding size of the int given
 func getPadding(nb int) int {
 	// Get the padding size : floor(log10(nb)) + 1
+	if nb <= 0 {
+		return 1
+	}
 	return int(math.Log10(float64(nb))) + 1
 }
 

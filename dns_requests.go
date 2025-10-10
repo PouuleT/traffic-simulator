@@ -71,8 +71,8 @@ func (r DNSRequest) IsError() bool {
 	return r.err != nil
 }
 
-// lookupURL will make a DNS request on a given URL and return a Request
-func lookupURL(url string) Request {
+// lookupHost will make a DNS request on a given URL and return a Request
+func lookupHost(url string) Request {
 	var dur time.Duration
 	t := time.Now()
 	// Make the DNS request

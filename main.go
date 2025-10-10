@@ -21,7 +21,8 @@ var (
 	trafficType           string
 	timeout               int
 	seed                  int64
-	followHttpRedirect    bool
+	followHTTPRedirect    bool
+	rng                   *rand.Rand
 )
 
 func init() {
@@ -33,12 +34,12 @@ func init() {
 	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "seed for the random")
 	flag.StringVar(&trafficType, "type", "http", "type of requests http/dns")
 	flag.StringVar(&fileName, "urlSource", "", "optional filepath where to find the URLs")
-	flag.BoolVar(&followHttpRedirect, "followRedirect", true, "follow http redirects or not")
+	flag.BoolVar(&followHTTPRedirect, "followRedirect", true, "follow http redirects or not")
 	flag.Parse()
 
 	log.SetFlags(0)
 	log.Println("Random URLs using seed", seed)
-	rand.New(rand.NewSource(seed))
+	rng = rand.New(rand.NewSource(seed))
 }
 
 func main() {

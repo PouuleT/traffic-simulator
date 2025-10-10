@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"log"
-	"math/rand"
 	"net/url"
 	"os"
 )
@@ -913,5 +912,5 @@ func getURLs() error {
 
 // findRandomURL will return a random URL
 func findRandomURL() string {
-	return URLs[rand.Intn(len(URLs))]
+	return URLs[rng.Intn(len(URLs))]
 }
