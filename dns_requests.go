@@ -7,6 +7,41 @@ import (
 	"time"
 )
 
+// DNSGenerator implements the Generator interface
+type DNSGenerator struct {
+}
+
+func newDNSGenerator(_ config) Generator {
+	return &DNSGenerator{}
+}
+
+// MakeRequest implements the Generator interface
+func (d *DNSGenerator) MakeRequest(url string) Request {
+	var dur time.Duration
+	t := time.Now()
+	// Make the DNS request
+	_, err := net.LookupHost(url)
+	if err != nil {
+		dur = time.Since(t)
+		return &DNSRequest{
+			duration:  dur,
+			url:       url,
+			err:       err,
+			criticity: Critical,
+		}
+	}
+
+	// Record the duration of the request
+	dur = time.Since(t)
+
+	return &DNSRequest{
+		duration:  dur,
+		status:    "OK ",
+		criticity: Success,
+		url:       url,
+	}
+}
+
 // DNSRequest represents a request response, with the return code and the duration
 type DNSRequest struct {
 	status    string
@@ -69,31 +104,4 @@ func (r DNSRequest) Status() string {
 // IsError returns true if the request is an error
 func (r DNSRequest) IsError() bool {
 	return r.err != nil
-}
-
-// lookupHost will make a DNS request on a given URL and return a Request
-func lookupHost(url string) Request {
-	var dur time.Duration
-	t := time.Now()
-	// Make the DNS request
-	_, err := net.LookupHost(url)
-	if err != nil {
-		dur = time.Since(t)
-		return &DNSRequest{
-			duration:  dur,
-			url:       url,
-			err:       err,
-			criticity: Critical,
-		}
-	}
-
-	// Record the duration of the request
-	dur = time.Since(t)
-
-	return &DNSRequest{
-		duration:  dur,
-		status:    "OK ",
-		criticity: Success,
-		url:       url,
-	}
 }

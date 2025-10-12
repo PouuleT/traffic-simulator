@@ -5,58 +5,77 @@ import (
 	"flag"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 var (
-	// URLs represents the list of URL to test
-	URLs = []string{}
-	// ErrInvalidTrafficType is returned if the traffic type is invalid
 	ErrInvalidTrafficType = errors.New("invalid traffic type")
-
-	nbOfClients           int
-	nbOfRequests          int
-	avgMillisecondsToWait int
-	fileName              string
-	trafficType           string
-	timeout               int
-	seed                  int64
-	followHTTPRedirect    bool
-	rng                   *rand.Rand
 )
 
-func init() {
-	// Parse the arguments
-	flag.IntVar(&nbOfClients, "clients", 10, "number of clients making requests")
-	flag.IntVar(&nbOfRequests, "requests", 10, "number of requests to be made by each clients")
-	flag.IntVar(&avgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
-	flag.IntVar(&timeout, "timeout", 3, "HTTP timeout in seconds")
-	flag.Int64Var(&seed, "seed", time.Now().UTC().UnixNano(), "seed for the random")
-	flag.StringVar(&trafficType, "type", "http", "type of requests http/dns")
-	flag.StringVar(&fileName, "urlSource", "", "optional filepath where to find the URLs")
-	flag.BoolVar(&followHTTPRedirect, "followRedirect", true, "follow http redirects or not")
+type config struct {
+	NbOfClients           int
+	NbOfRequests          int
+	AvgMillisecondsToWait int
+	FileName              string
+	TrafficType           string
+	Timeout               int
+	Seed                  int64
+	FollowHTTPRedirect    bool
+}
+
+type app struct {
+	URLMutex sync.Mutex
+	URLs     []string
+	rng      *rand.Rand
+	cfg      config
+
+	stats   Stats
+	wg      sync.WaitGroup
+	workers []*Worker
+}
+
+func (a *app) ParseFlags() error {
+	flag.IntVar(&a.cfg.NbOfClients, "clients", 10, "number of clients making requests")
+	flag.IntVar(&a.cfg.NbOfRequests, "requests", 10, "number of requests to be made by each clients")
+	flag.IntVar(&a.cfg.AvgMillisecondsToWait, "wait", 1000, "milliseconds to wait between each requests")
+	flag.IntVar(&a.cfg.Timeout, "timeout", 3, "HTTP timeout in seconds")
+	flag.Int64Var(&a.cfg.Seed, "seed", time.Now().UTC().UnixNano(), "seed for the random")
+	flag.StringVar(&a.cfg.TrafficType, "type", "http", "type of requests http/dns")
+	flag.StringVar(&a.cfg.FileName, "urlSource", "", "optional filepath where to find the URLs")
+	flag.BoolVar(&a.cfg.FollowHTTPRedirect, "followRedirect", true, "follow http redirects or not")
 	flag.Parse()
 
-	log.SetFlags(0)
-	log.Println("Random URLs using seed", seed)
-	rng = rand.New(rand.NewSource(seed))
+	a.rng = rand.New(rand.NewSource(a.cfg.Seed))
+	return nil
 }
 
 func main() {
-	// Create the TrafficGenerator
-	trafficGenerator, err := NewTrafficGenerator(trafficType)
+	a := &app{}
+	err := a.ParseFlags()
 	if err != nil {
-		log.Fatalf("Error while creating TrafficGenerator: %q", err)
+		log.Fatal(err)
 	}
 
+	log.SetFlags(0)
+
+	stats, err := newStats(a.cfg.TrafficType)
+	if err != nil {
+		log.Fatalf("Error: %q", err)
+	}
+	a.stats = stats
+
 	// Get the URLs
-	if err := getURLs(); err != nil {
+	if err := a.fillURLs(); err != nil {
 		log.Fatalf("Error while getting the URLs: %q", err)
 	}
 
-	// Generate the traffic
-	trafficGenerator.Generate()
+	// Start the traffic
+	err = a.Start()
+	if err != nil {
+		log.Fatalf("Error while generating traffic: %q", err)
+	}
 
 	// Display the statistics
-	trafficGenerator.DisplayStats()
+	a.DisplayStats()
 }

@@ -11,7 +11,6 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -37,68 +36,39 @@ type ResponseTimeline struct {
 	ContentTransfer        time.Duration
 }
 
-// String will return the string representing the request
-func (r HTTPRequest) String() string {
-	if r.IsError() {
-		return fmt.Sprintf("| %s | %13s | Get %s : %s ( %s )", red("ERR"), r.duration, r.url, r.Error(), humanize.Bytes(uint64(r.size)))
-	}
-	return fmt.Sprintf("| %s | %13s | Get %s ( %s )", criticityColor[r.criticity](r.statusShort), r.duration, r.url, humanize.Bytes(uint64(r.size)))
+// HTTPGenerator implements the Generator interface
+type HTTPGenerator struct {
+	client *http.Client
 }
 
-// Duration returns the duration of the request
-func (r HTTPRequest) Duration() time.Duration {
-	return r.duration
-}
-
-// Error returns the error of the request
-func (r HTTPRequest) Error() string {
-	if r.err == nil {
-		return "<nil>"
+func newHTTPGenerator(cfg config) Generator {
+	tr := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
-
-	var e *url.Error
-	switch {
-	case errors.As(r.err, &e) && e.Timeout():
-		return "URL timeout"
-	case errors.As(r.err, new(*net.DNSError)):
-		return "DNS lookup error"
-	case errors.As(r.err, new(*net.DNSConfigError)):
-		return "DNS config error"
-	case errors.As(r.err, new(*net.AddrError)):
-		return "Address error"
-	case errors.As(r.err, new(*net.OpError)):
-		return "Operation error"
-	case errors.As(r.err, new(net.Error)):
-		return "Network error"
-	default:
-		return r.err.Error()
+	client := &http.Client{
+		Transport: tr,
+		Timeout:   time.Duration(cfg.Timeout) * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			// Check if we need to follow redirect or no
+			if cfg.FollowHTTPRedirect {
+				return nil
+			}
+			return http.ErrUseLastResponse
+		},
+	}
+	return &HTTPGenerator{
+		client: client,
 	}
 }
 
-// Size returns the size of the request
-func (r HTTPRequest) Size() int64 {
-	return r.size
-}
-
-// Status returns the status of the request
-func (r HTTPRequest) Status() string {
-	return r.status
-}
-
-// IsError returns true if the request is an error
-func (r HTTPRequest) IsError() bool {
-	return r.err != nil
-}
-
-// getURL will get a given URL and return a Request
-func getURL(url string) Request {
-	var dnsStart, dnsDone, connectStart, connectDone, gotConn, gotByte time.Time
+// MakeRequest implements the Generator interface
+func (h *HTTPGenerator) MakeRequest(url string) Request {
 	url = "http://" + url
-
-	var dur time.Duration
-	// Initiate the time before the request
-
-	t := time.Now()
+	var dnsStart, dnsDone, connectStart, connectDone, gotConn, gotByte time.Time
 
 	// Do the request
 	trace := &httptrace.ClientTrace{
@@ -121,8 +91,12 @@ func getURL(url string) Request {
 		GotFirstResponseByte: func() { gotByte = time.Now() },
 	}
 
-	b := strings.NewReader("")
-	req, err := http.NewRequest("GET", url, b)
+	var dur time.Duration
+
+	// Initiate the time before the request
+	t := time.Now()
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		dur = time.Since(t)
 		return &HTTPRequest{
@@ -135,26 +109,7 @@ func getURL(url string) Request {
 
 	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
 
-	tr := &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-	}
-	client := &http.Client{
-		Transport: tr,
-		Timeout:   time.Duration(timeout) * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			// Check if we need to follow redirect or no
-			if followHTTPRedirect {
-				return nil
-			}
-			return http.ErrUseLastResponse
-		},
-	}
-
-	resp, err := client.Do(req)
+	resp, err := h.client.Do(req)
 	if err != nil {
 		dur = time.Since(t)
 		return &HTTPRequest{
@@ -214,4 +169,57 @@ func getURL(url string) Request {
 		size:             length,
 		responseTimeline: &responseTimeline,
 	}
+}
+
+// String will return the string representing the request
+func (r HTTPRequest) String() string {
+	if r.IsError() {
+		return fmt.Sprintf("| %s | %13s | Get %s : %s ( %s )", red("ERR"), r.duration, r.url, r.Error(), humanize.Bytes(uint64(r.size)))
+	}
+	return fmt.Sprintf("| %s | %13s | Get %s ( %s )", criticityColor[r.criticity](r.statusShort), r.duration, r.url, humanize.Bytes(uint64(r.size)))
+}
+
+// Duration returns the duration of the request
+func (r HTTPRequest) Duration() time.Duration {
+	return r.duration
+}
+
+// Error returns the error of the request
+func (r HTTPRequest) Error() string {
+	if r.err == nil {
+		return "<nil>"
+	}
+
+	var e *url.Error
+	switch {
+	case errors.As(r.err, &e) && e.Timeout():
+		return "URL timeout"
+	case errors.As(r.err, new(*net.DNSError)):
+		return "DNS lookup error"
+	case errors.As(r.err, new(*net.DNSConfigError)):
+		return "DNS config error"
+	case errors.As(r.err, new(*net.AddrError)):
+		return "Address error"
+	case errors.As(r.err, new(*net.OpError)):
+		return "Operation error"
+	case errors.As(r.err, new(net.Error)):
+		return "Network error"
+	default:
+		return r.err.Error()
+	}
+}
+
+// Size returns the size of the request
+func (r HTTPRequest) Size() int64 {
+	return r.size
+}
+
+// Status returns the status of the request
+func (r HTTPRequest) Status() string {
+	return r.status
+}
+
+// IsError returns true if the request is an error
+func (r HTTPRequest) IsError() bool {
+	return r.err != nil
 }

@@ -65,7 +65,7 @@ func (s *DNSStats) Render() {
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
-		(s.totalDuration / time.Duration(s.nbOfRequests)).String(),
+		getAvgDuration(s.totalDuration, s.nbOfRequests),
 		s.execDuration.String(),
 	})
 
