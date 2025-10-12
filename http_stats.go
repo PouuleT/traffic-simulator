@@ -84,13 +84,17 @@ func (s *HTTPStats) Render() {
 		"Total size",
 	})
 
+	var speed uint64
+	if s.execDuration.Seconds() > 0 {
+		speed = uint64(float64(s.totalSize) / s.execDuration.Seconds())
+	}
 	table.Append([]string{
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
 		getAvgDuration(s.totalDuration, s.nbOfRequests),
 		s.execDuration.String(),
-		fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(s.totalSize)/s.execDuration.Seconds()))),
+		fmt.Sprintf("%s/s", humanize.Bytes(speed)),
 		humanize.Bytes(uint64(s.totalSize)),
 	})
 

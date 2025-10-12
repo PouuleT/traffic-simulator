@@ -6,27 +6,29 @@ import (
 	"math"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
 
-// TrafficGenerator represents the traffic generation object
-type TrafficGenerator struct {
-	stats       Stats
-	trafficFunc func(string) Request
-	wg          sync.WaitGroup
+// Generator represents a generator interface
+type Generator interface {
+	MakeRequest(string) Request
 }
 
 // Worker represents a client making the requests
 type Worker struct {
-	id         int
-	trafficGen *TrafficGenerator
+	id                    int
+	trafficGen            *app
+	exitChan              chan struct{}
+	generator             Generator
+	NbOfClients           int
+	NbOfRequests          int
+	AvgMillisecondsToWait int
 }
 
-var trafficMap = map[string]func(string) Request{
-	"http": getURL,
-	"dns":  lookupHost,
+var generatorMap = map[string]func(cfg config) Generator{
+	"http": newHTTPGenerator,
+	"dns":  newDNSGenerator,
 }
 
 var statsMap = map[string]func() Stats{
@@ -34,41 +36,45 @@ var statsMap = map[string]func() Stats{
 	"dns":  newDNSStats,
 }
 
-var exitChan = make(chan struct{}, nbOfClients)
-
-// NewTrafficGenerator will return a new TrafficGenerator object
-func NewTrafficGenerator(trafficType string) (*TrafficGenerator, error) {
-	tFunc, ok := trafficMap[trafficType]
+func (a *app) newGenerator() (Generator, error) {
+	newGenerator, ok := generatorMap[a.cfg.TrafficType]
 	if !ok {
 		return nil, ErrInvalidTrafficType
 	}
-	stats, err := newStats(trafficType)
-	if err != nil {
-		return nil, err
-	}
-	return &TrafficGenerator{
-		trafficFunc: tFunc,
-		stats:       stats,
-	}, nil
+	return newGenerator(a.cfg), nil
 }
 
-// Generate generates traffic
-func (trafficGen *TrafficGenerator) Generate() {
+// Start the TrafficGenerator
+func (a *app) Start() error {
 	// Create a channel that will listen to SIGINT / SIGTERM
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
-	for i := 1; i <= nbOfClients; i++ {
-		trafficGen.wg.Add(1)
+	start := time.Now()
+	defer func() {
+		a.stats.SetDuration(time.Since(start))
+	}()
+
+	for i := 1; i <= a.cfg.NbOfClients; i++ {
+		a.wg.Add(1)
 		// Launch the workers in a go routine
-		go trafficGen.NewWorker(i).work()
+		w, err := a.NewWorker(i)
+		if err != nil {
+			return err
+		}
+
+		a.workers = append(a.workers, w)
+		go func() {
+			w.work()
+			a.wg.Done()
+		}()
 	}
 
 	// Done channel to stop the loop when all the workers are done
 	var done = make(chan struct{})
 	go func() {
 		// Wait for the workerss
-		trafficGen.wg.Wait()
+		a.wg.Wait()
 		// All the workers are done
 		done <- struct{}{}
 	}()
@@ -80,19 +86,19 @@ func (trafficGen *TrafficGenerator) Generate() {
 		select {
 		case <-done:
 			// All the workers are done, we quit
-			return
+			return nil
 		case sig := <-c:
 			// We listen for signals
 			switch sig {
 			case syscall.SIGINT, syscall.SIGTERM:
 				// If it's the second time we get a signal, quit
 				if forceShutdown {
-					os.Exit(1)
+					os.Exit(0)
 				}
 
 				// Notify all the workers that they need to stop
-				for i := 1; i <= nbOfClients; i++ {
-					exitChan <- struct{}{}
+				for _, w := range a.workers {
+					w.exitChan <- struct{}{}
 				}
 
 				// Next time we get a signal, need to quit directly
@@ -103,65 +109,51 @@ func (trafficGen *TrafficGenerator) Generate() {
 }
 
 // NewWorker creates a new worker for traffic generation
-func (trafficGen *TrafficGenerator) NewWorker(i int) *Worker {
-	return &Worker{
-		id:         i,
-		trafficGen: trafficGen,
+func (a *app) NewWorker(i int) (*Worker, error) {
+	generator, err := a.newGenerator()
+	if err != nil {
+		return nil, ErrInvalidTrafficType
 	}
+	return &Worker{
+		id:                    i,
+		trafficGen:            a,
+		generator:             generator,
+		exitChan:              make(chan struct{}, 1),
+		NbOfClients:           a.cfg.NbOfClients,
+		NbOfRequests:          a.cfg.NbOfRequests,
+		AvgMillisecondsToWait: a.cfg.AvgMillisecondsToWait,
+	}, nil
 }
 
 // DisplayStats renders the statistics of the traffic generation
-func (trafficGen *TrafficGenerator) DisplayStats() {
-	trafficGen.stats.Render()
+func (a *app) DisplayStats() {
+	a.stats.Render()
 }
 
 func (w *Worker) work() {
-	var exit bool
-	defer w.trafficGen.wg.Done()
-	start := time.Now()
-
-	var done = make(chan struct{})
-	// When the work is done, notify the watching go routine
-	defer func() { done <- struct{}{} }()
-
-	// Create the watching go routine that will watch if we need to quit early
-	go func() {
-		for {
-			select {
-			// If we need to exit
-			case <-exitChan:
-				exit = true
-			// If everything is done
-			case <-done:
-				return
-			}
-		}
-	}()
-
-	workerFmt := fmt.Sprintf("worker#%%0%dd", getPadding(nbOfClients))
-	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", getPadding(nbOfRequests))
+	workerFmt := fmt.Sprintf("worker#%%0%dd", getPadding(w.NbOfClients))
+	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", getPadding(w.NbOfRequests))
 
 	prefix := fmt.Sprintf(workerFmt, w.id)
 	logger := log.New(os.Stdout, prefix, 0)
 
-	defer func() {
-		w.trafficGen.stats.SetDuration(time.Since(start))
-	}()
 	// Repeat nbOfRequests requests
-	for i := 1; i <= nbOfRequests; i++ {
-		// If we got an exit signal, quit
-		if exit {
+	for i := 1; i <= w.NbOfRequests; i++ {
+		select {
+		// If we need to exit
+		case <-w.exitChan:
 			return
+		default:
 		}
-		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, nbOfRequests))
+		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, w.NbOfRequests))
 		// Find an URL and make the request
-		r := w.trafficGen.trafficFunc(findRandomURL())
+		r := w.generator.MakeRequest(w.trafficGen.findRandomURL())
 		// Add the request to the stats
 		w.trafficGen.stats.AddRequest(r)
 		// Print the request
 		logger.Print(r.String())
 
-		time.Sleep(time.Duration(avgMillisecondsToWait) * time.Millisecond)
+		time.Sleep(time.Duration(w.AvgMillisecondsToWait) * time.Millisecond)
 	}
 }
 
