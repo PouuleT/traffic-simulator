@@ -47,5 +47,5 @@ func (a *app) fillURLs() error {
 func (a *app) findRandomURL() string {
 	a.URLMutex.Lock()
 	defer a.URLMutex.Unlock()
-	return a.URLs[a.rng.Intn(len(a.URLs))]
+	return a.URLs[a.rng.IntN(len(a.URLs))]
 }

@@ -54,13 +54,7 @@ func (s *HTTPStats) addDuration(req Request) {
 	if !ok {
 		log.Fatal("Handling an unexpected request")
 	}
-	s.totalDuration += req.Duration()
-	if s.maxDuration < req.Duration() {
-		s.maxDuration = req.Duration()
-	}
-	if s.minDuration == 0 || s.minDuration > req.Duration() {
-		s.minDuration = req.Duration()
-	}
+	s.DurationStats.updateDuration(req.Duration())
 	if r.responseTimeline == nil {
 		return
 	}
