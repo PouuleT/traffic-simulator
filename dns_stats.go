@@ -42,13 +42,7 @@ func (s *DNSStats) AddRequest(req Request) {
 
 // addDuration will add the duration of a requests to the stats
 func (s *DNSStats) addDuration(req Request) {
-	s.totalDuration += req.Duration()
-	if s.maxDuration < req.Duration() {
-		s.maxDuration = req.Duration()
-	}
-	if s.minDuration == 0 || s.minDuration > req.Duration() {
-		s.minDuration = req.Duration()
-	}
+	s.DurationStats.updateDuration(req.Duration())
 }
 
 // Render renders the results

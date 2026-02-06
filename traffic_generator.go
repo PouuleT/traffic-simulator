@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math"
@@ -8,18 +9,19 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 )
 
 // Generator represents a generator interface
 type Generator interface {
-	MakeRequest(string) Request
+	MakeRequest(context.Context, string) Request
 }
 
 // Worker represents a client making the requests
 type Worker struct {
 	id                    int
 	trafficGen            *app
-	exitChan              chan struct{}
 	generator             Generator
 	NbOfClients           int
 	NbOfRequests          int
@@ -46,17 +48,18 @@ func (a *app) newGenerator() (Generator, error) {
 
 // Start the TrafficGenerator
 func (a *app) Start() error {
-	// Create a channel that will listen to SIGINT / SIGTERM
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	// Create a context that will be cancelled on SIGINT / SIGTERM
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	start := time.Now()
 	defer func() {
 		a.stats.SetDuration(time.Since(start))
 	}()
 
+	g, ctx := errgroup.WithContext(ctx)
+
 	for i := 1; i <= a.cfg.NbOfClients; i++ {
-		a.wg.Add(1)
 		// Launch the workers in a go routine
 		w, err := a.NewWorker(i)
 		if err != nil {
@@ -64,46 +67,36 @@ func (a *app) Start() error {
 		}
 
 		a.workers = append(a.workers, w)
-		go func() {
-			w.work()
-			a.wg.Done()
-		}()
+		g.Go(func() error {
+			w.work(ctx)
+			return nil
+		})
 	}
 
 	// Done channel to stop the loop when all the workers are done
 	var done = make(chan struct{})
 	go func() {
-		// Wait for the workerss
-		a.wg.Wait()
+		// Wait for the workers
+		_ = g.Wait()
 		// All the workers are done
 		done <- struct{}{}
 	}()
 
-	// Wait for the workers to end
-	// or a signal in the loop
+	// Wait for the workers to end or a signal
 	var forceShutdown bool
 	for {
 		select {
 		case <-done:
 			// All the workers are done, we quit
 			return nil
-		case sig := <-c:
-			// We listen for signals
-			switch sig {
-			case syscall.SIGINT, syscall.SIGTERM:
-				// If it's the second time we get a signal, quit
-				if forceShutdown {
-					os.Exit(0)
-				}
-
-				// Notify all the workers that they need to stop
-				for _, w := range a.workers {
-					w.exitChan <- struct{}{}
-				}
-
-				// Next time we get a signal, need to quit directly
-				forceShutdown = true
+		case <-ctx.Done():
+			// We received a signal
+			if forceShutdown {
+				os.Exit(0)
 			}
+			// First signal: let context cancellation stop workers gracefully
+			// Next time we get a signal, need to quit directly
+			forceShutdown = true
 		}
 	}
 }
@@ -118,7 +111,6 @@ func (a *app) NewWorker(i int) (*Worker, error) {
 		id:                    i,
 		trafficGen:            a,
 		generator:             generator,
-		exitChan:              make(chan struct{}, 1),
 		NbOfClients:           a.cfg.NbOfClients,
 		NbOfRequests:          a.cfg.NbOfRequests,
 		AvgMillisecondsToWait: a.cfg.AvgMillisecondsToWait,
@@ -130,7 +122,7 @@ func (a *app) DisplayStats() {
 	a.stats.Render()
 }
 
-func (w *Worker) work() {
+func (w *Worker) work(ctx context.Context) {
 	workerFmt := fmt.Sprintf("worker#%%0%dd", getPadding(w.NbOfClients))
 	counterFmt := fmt.Sprintf(" - %%0%dd/%%d ", getPadding(w.NbOfRequests))
 
@@ -141,13 +133,13 @@ func (w *Worker) work() {
 	for i := 1; i <= w.NbOfRequests; i++ {
 		select {
 		// If we need to exit
-		case <-w.exitChan:
+		case <-ctx.Done():
 			return
 		default:
 		}
 		logger.SetPrefix(prefix + fmt.Sprintf(counterFmt, i, w.NbOfRequests))
 		// Find an URL and make the request
-		r := w.generator.MakeRequest(w.trafficGen.findRandomURL())
+		r := w.generator.MakeRequest(ctx, w.trafficGen.findRandomURL())
 		// Add the request to the stats
 		w.trafficGen.stats.AddRequest(r)
 		// Print the request

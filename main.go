@@ -4,7 +4,7 @@ import (
 	"errors"
 	"flag"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"time"
 )
@@ -31,7 +31,6 @@ type app struct {
 	cfg      config
 
 	stats   Stats
-	wg      sync.WaitGroup
 	workers []*Worker
 }
 
@@ -46,7 +45,7 @@ func (a *app) ParseFlags() error {
 	flag.BoolVar(&a.cfg.FollowHTTPRedirect, "followRedirect", true, "follow http redirects or not")
 	flag.Parse()
 
-	a.rng = rand.New(rand.NewSource(a.cfg.Seed))
+	a.rng = rand.New(rand.NewPCG(uint64(a.cfg.Seed), 0))
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -16,13 +18,13 @@ func newDNSGenerator(_ config) Generator {
 }
 
 // MakeRequest implements the Generator interface
-func (d *DNSGenerator) MakeRequest(url string) Request {
-	var dur time.Duration
+func (d *DNSGenerator) MakeRequest(ctx context.Context, url string) Request {
 	t := time.Now()
 	// Make the DNS request
-	_, err := net.LookupHost(url)
+	_, err := net.DefaultResolver.LookupHost(ctx, url)
+	dur := time.Since(t)
+
 	if err != nil {
-		dur = time.Since(t)
 		return &DNSRequest{
 			duration:  dur,
 			url:       url,
@@ -30,9 +32,6 @@ func (d *DNSGenerator) MakeRequest(url string) Request {
 			criticity: Critical,
 		}
 	}
-
-	// Record the duration of the request
-	dur = time.Since(t)
 
 	return &DNSRequest{
 		duration:  dur,
@@ -60,48 +59,46 @@ func (r *DNSRequest) String() string {
 }
 
 // Duration returns the duration of the request
-func (r DNSRequest) Duration() time.Duration {
+func (r *DNSRequest) Duration() time.Duration {
 	return r.duration
 }
 
 // Error implements the error interface
-func (r DNSRequest) Error() string {
-	var errName string
-
-	switch e := r.err.(type) {
-	case *net.DNSError:
-		errName = "DNS lookup error"
-	case *net.DNSConfigError:
-		errName = "DNS config error"
-	case *net.AddrError:
-		errName = "Addr Error"
-	case *net.OpError:
-		errName = "Op Error"
-	case *url.Error:
-		if e.Timeout() {
-			errName = "URL Timeout"
-		} else {
-			errName = "URL Error"
-		}
-	case net.Error:
-		errName = "Net Error"
-	default:
-		errName = e.Error()
+func (r *DNSRequest) Error() string {
+	if r.err == nil {
+		return "<nil>"
 	}
-	return errName
+
+	var e *url.Error
+	switch {
+	case errors.As(r.err, &e) && e.Timeout():
+		return "URL timeout"
+	case errors.As(r.err, new(*net.DNSError)):
+		return "DNS lookup error"
+	case errors.As(r.err, new(*net.DNSConfigError)):
+		return "DNS config error"
+	case errors.As(r.err, new(*net.AddrError)):
+		return "Address error"
+	case errors.As(r.err, new(*net.OpError)):
+		return "Operation error"
+	case errors.As(r.err, new(net.Error)):
+		return "Network error"
+	default:
+		return r.err.Error()
+	}
 }
 
 // Size returns the size of the request
-func (r DNSRequest) Size() int64 {
+func (r *DNSRequest) Size() int64 {
 	return 0
 }
 
 // Status returns the status of the request
-func (r DNSRequest) Status() string {
+func (r *DNSRequest) Status() string {
 	return r.status
 }
 
 // IsError returns true if the request is an error
-func (r DNSRequest) IsError() bool {
+func (r *DNSRequest) IsError() bool {
 	return r.err != nil
 }

@@ -17,6 +17,17 @@ type DurationStats struct {
 	execDuration  time.Duration
 }
 
+// updateDuration updates the duration statistics with a new request duration
+func (d *DurationStats) updateDuration(dur time.Duration) {
+	d.totalDuration += dur
+	if d.maxDuration < dur {
+		d.maxDuration = dur
+	}
+	if d.minDuration == 0 || d.minDuration > dur {
+		d.minDuration = dur
+	}
+}
+
 func newStats(trafficType string) (Stats, error) {
 	stats, ok := statsMap[trafficType]
 	if !ok {

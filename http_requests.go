@@ -66,7 +66,7 @@ func newHTTPGenerator(cfg config) Generator {
 }
 
 // MakeRequest implements the Generator interface
-func (h *HTTPGenerator) MakeRequest(url string) Request {
+func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	url = "http://" + url
 	var dnsStart, dnsDone, connectStart, connectDone, gotConn, gotByte time.Time
 
@@ -91,14 +91,12 @@ func (h *HTTPGenerator) MakeRequest(url string) Request {
 		GotFirstResponseByte: func() { gotByte = time.Now() },
 	}
 
-	var dur time.Duration
-
 	// Initiate the time before the request
 	t := time.Now()
 
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", url, nil)
 	if err != nil {
-		dur = time.Since(t)
+		dur := time.Since(t)
 		return &HTTPRequest{
 			url:       url,
 			duration:  dur,
@@ -107,11 +105,9 @@ func (h *HTTPGenerator) MakeRequest(url string) Request {
 		}
 	}
 
-	req = req.WithContext(httptrace.WithClientTrace(context.Background(), trace))
-
 	resp, err := h.client.Do(req)
 	if err != nil {
-		dur = time.Since(t)
+		dur := time.Since(t)
 		return &HTTPRequest{
 			url:       url,
 			duration:  dur,
@@ -125,7 +121,7 @@ func (h *HTTPGenerator) MakeRequest(url string) Request {
 	// Read the full body
 	length, err := io.Copy(io.Discard, resp.Body)
 	if err != nil {
-		dur = time.Since(t)
+		dur := time.Since(t)
 		return &HTTPRequest{
 			url:       url,
 			duration:  dur,
@@ -136,7 +132,7 @@ func (h *HTTPGenerator) MakeRequest(url string) Request {
 	}
 	// Record the duration of the request
 	allDone := time.Now()
-	dur = time.Since(t)
+	dur := time.Since(t)
 
 	// If some http statuses has no StatusText, return a simple string with the
 	// http status
