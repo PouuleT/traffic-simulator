@@ -7,6 +7,20 @@ type Stats interface {
 	AddRequest(Request)
 	Render()
 	SetDuration(time.Duration)
+	Snapshot() StatsData
+}
+
+// StatsData holds a snapshot of stats for rendering
+type StatsData struct {
+	NbOfRequests     int
+	SuccessRequests  int
+	StatusStats      map[string]int
+	MinDuration      time.Duration
+	MaxDuration      time.Duration
+	TotalDuration    time.Duration
+	ExecDuration     time.Duration
+	TotalSize        int64
+	ResponseTimeline *ResponseTimeline
 }
 
 // DurationStats represents statistics of durations
