@@ -54,7 +54,7 @@ func (s *HTTPStats) addDuration(req Request) {
 	if !ok {
 		log.Fatal("Handling an unexpected request")
 	}
-	s.DurationStats.updateDuration(req.Duration())
+	s.updateDuration(req.Duration())
 	if r.responseTimeline == nil {
 		return
 	}
@@ -82,7 +82,7 @@ func (s *HTTPStats) Render() {
 	if s.execDuration.Seconds() > 0 {
 		speed = uint64(float64(s.totalSize) / s.execDuration.Seconds())
 	}
-	table.Append([]string{
+	_ = table.Append([]string{
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
@@ -93,40 +93,71 @@ func (s *HTTPStats) Render() {
 	})
 
 	fmt.Printf("\nStats :\n")
-	table.Render()
+	_ = table.Render()
 
 	statusTable := tablewriter.NewTable(os.Stdout)
 	statusTable.Header([]string{"Result", "Count"})
 	for key, value := range s.statusStats {
-		statusTable.Append([]string{key, strconv.Itoa(value)})
+		_ = statusTable.Append([]string{key, strconv.Itoa(value)})
 	}
 
 	fmt.Printf("\nStatuses :\n")
-	statusTable.Render()
+	_ = statusTable.Render()
 
 	timeTable := tablewriter.NewTable(os.Stdout)
 	timeTable.Header([]string{"Step", "Average duration"})
-	timeTable.Append([]string{
+	_ = timeTable.Append([]string{
 		"DNSLookup", getAvgDuration(s.responseTimeline.DNSLookup, s.successRequests),
 	})
-	timeTable.Append([]string{
+	_ = timeTable.Append([]string{
 		"TCPConnection", getAvgDuration(s.responseTimeline.TCPConnection, s.successRequests),
 	})
-	timeTable.Append([]string{
+	_ = timeTable.Append([]string{
 		"EstablishingConnection", getAvgDuration(s.responseTimeline.EstablishingConnection, s.successRequests),
 	})
-	timeTable.Append([]string{
+	_ = timeTable.Append([]string{
 		"ServerProcessing", getAvgDuration(s.responseTimeline.ServerProcessing, s.successRequests),
 	})
-	timeTable.Append([]string{
+	_ = timeTable.Append([]string{
 		"ContentTransfer", getAvgDuration(s.responseTimeline.ContentTransfer, s.successRequests),
 	})
 
 	fmt.Printf("\nRequest details :\n")
-	timeTable.Render()
+	_ = timeTable.Render()
 }
 
 // SetDuration will set the total duration of the simulation
 func (s *HTTPStats) SetDuration(t time.Duration) {
 	s.execDuration = t
+}
+
+// Snapshot returns a thread-safe snapshot of current stats
+func (s *HTTPStats) Snapshot() StatsData {
+	s.Lock()
+	defer s.Unlock()
+
+	// Copy the map
+	statusCopy := make(map[string]int, len(s.statusStats))
+	for k, v := range s.statusStats {
+		statusCopy[k] = v
+	}
+
+	// Copy timeline
+	var timelineCopy *ResponseTimeline
+	if s.responseTimeline != nil {
+		tl := *s.responseTimeline
+		timelineCopy = &tl
+	}
+
+	return StatsData{
+		NbOfRequests:     s.nbOfRequests,
+		SuccessRequests:  s.successRequests,
+		StatusStats:      statusCopy,
+		MinDuration:      s.minDuration,
+		MaxDuration:      s.maxDuration,
+		TotalDuration:    s.totalDuration,
+		ExecDuration:     s.execDuration,
+		TotalSize:        s.totalSize,
+		ResponseTimeline: timelineCopy,
+	}
 }

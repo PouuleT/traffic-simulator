@@ -106,6 +106,9 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	}
 
 	resp, err := h.client.Do(req)
+	if resp != nil {
+		defer func() { _ = resp.Body.Close() }()
+	}
 	if err != nil {
 		dur := time.Since(t)
 		return &HTTPRequest{
@@ -115,8 +118,6 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 			criticity: Critical,
 		}
 	}
-
-	defer resp.Body.Close()
 
 	// Read the full body
 	length, err := io.Copy(io.Discard, resp.Body)
@@ -148,12 +149,31 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 		reqCriticity = Warning
 	}
 
+	// Calculate timeline durations, handling zero times for reused connections
+	var dnsLookup, tcpConnection, establishingConnection, serverProcessing, contentTransfer time.Duration
+
+	if !dnsStart.IsZero() && !dnsDone.IsZero() {
+		dnsLookup = dnsDone.Sub(dnsStart)
+	}
+	if !connectStart.IsZero() && !connectDone.IsZero() {
+		tcpConnection = connectDone.Sub(connectStart)
+	}
+	if !connectDone.IsZero() && !gotConn.IsZero() && gotConn.After(connectDone) {
+		establishingConnection = gotConn.Sub(connectDone)
+	}
+	if !gotConn.IsZero() && !gotByte.IsZero() {
+		serverProcessing = gotByte.Sub(gotConn)
+	}
+	if !gotByte.IsZero() && !allDone.IsZero() {
+		contentTransfer = allDone.Sub(gotByte)
+	}
+
 	responseTimeline := ResponseTimeline{
-		DNSLookup:              dnsDone.Sub(dnsStart),
-		TCPConnection:          connectDone.Sub(connectStart),
-		EstablishingConnection: gotConn.Sub(connectDone),
-		ServerProcessing:       gotByte.Sub(gotConn),
-		ContentTransfer:        allDone.Sub(gotByte),
+		DNSLookup:              dnsLookup,
+		TCPConnection:          tcpConnection,
+		EstablishingConnection: establishingConnection,
+		ServerProcessing:       serverProcessing,
+		ContentTransfer:        contentTransfer,
 	}
 
 	return &HTTPRequest{

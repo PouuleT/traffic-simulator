@@ -42,7 +42,7 @@ func (s *DNSStats) AddRequest(req Request) {
 
 // addDuration will add the duration of a requests to the stats
 func (s *DNSStats) addDuration(req Request) {
-	s.DurationStats.updateDuration(req.Duration())
+	s.updateDuration(req.Duration())
 }
 
 // Render renders the results
@@ -55,7 +55,7 @@ func (s *DNSStats) Render() {
 		"Average duration",
 		"Exec duration",
 	})
-	table.Append([]string{
+	_ = table.Append([]string{
 		strconv.Itoa(s.nbOfRequests),
 		s.minDuration.String(),
 		s.maxDuration.String(),
@@ -64,19 +64,43 @@ func (s *DNSStats) Render() {
 	})
 
 	fmt.Printf("\nStats :\n")
-	table.Render()
+	_ = table.Render()
 
 	statusTable := tablewriter.NewTable(os.Stdout)
 	statusTable.Header([]string{"Result", "Count"})
 	for key, value := range s.statusStats {
-		statusTable.Append([]string{key, strconv.Itoa(value)})
+		_ = statusTable.Append([]string{key, strconv.Itoa(value)})
 	}
 
 	fmt.Printf("\nStatuses :\n")
-	statusTable.Render()
+	_ = statusTable.Render()
 }
 
 // SetDuration will set the total duration of the simulation
 func (s *DNSStats) SetDuration(t time.Duration) {
 	s.execDuration = t
+}
+
+// Snapshot returns a thread-safe snapshot of current stats
+func (s *DNSStats) Snapshot() StatsData {
+	s.Lock()
+	defer s.Unlock()
+
+	// Copy the map
+	statusCopy := make(map[string]int, len(s.statusStats))
+	for k, v := range s.statusStats {
+		statusCopy[k] = v
+	}
+
+	return StatsData{
+		NbOfRequests:     s.nbOfRequests,
+		SuccessRequests:  0, // DNS doesn't track success separately
+		StatusStats:      statusCopy,
+		MinDuration:      s.minDuration,
+		MaxDuration:      s.maxDuration,
+		TotalDuration:    s.totalDuration,
+		ExecDuration:     s.execDuration,
+		TotalSize:        0,
+		ResponseTimeline: nil,
+	}
 }
