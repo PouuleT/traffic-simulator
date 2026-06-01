@@ -14,15 +14,19 @@ func (a *app) StartWithTUI() error {
 	// Create requests channel for TUI updates
 	a.requestsCh = make(chan requestLogEntry, 100)
 
+	// Create a cancelable context for background workers
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Create the TUI model
-	model := newTUIModel(a.cfg, a.stats, totalReqs)
+	model := newTUIModel(a.cfg, a.stats, totalReqs, cancel)
 
 	// Create the Bubble Tea program
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(&model, tea.WithAltScreen())
 
 	// Start the traffic generation in a goroutine
 	go func() {
-		_ = a.startTrafficGeneration(context.Background())
+		_ = a.startTrafficGeneration(ctx)
 		// Signal completion
 		p.Send(allDoneMsg{})
 	}()

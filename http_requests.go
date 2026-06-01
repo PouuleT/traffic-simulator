@@ -67,7 +67,20 @@ func newHTTPGenerator(cfg config) Generator {
 
 // MakeRequest implements the Generator interface
 func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
-	url = "http://" + url
+	scheme, host, path, err := parseTargetURL(url)
+	if err != nil {
+		return &HTTPRequest{
+			url:       url,
+			duration:  0,
+			err:       err,
+			criticity: Critical,
+		}
+	}
+	if scheme == "" {
+		scheme = "http"
+	}
+	targetURL := scheme + "://" + host + path
+
 	var dnsStart, dnsDone, connectStart, connectDone, gotConn, gotByte time.Time
 
 	// Do the request
@@ -94,11 +107,11 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	// Initiate the time before the request
 	t := time.Now()
 
-	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", url, nil)
+	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), "GET", targetURL, nil)
 	if err != nil {
 		dur := time.Since(t)
 		return &HTTPRequest{
-			url:       url,
+			url:       targetURL,
 			duration:  dur,
 			err:       err,
 			criticity: Critical,
@@ -112,7 +125,7 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	if err != nil {
 		dur := time.Since(t)
 		return &HTTPRequest{
-			url:       url,
+			url:       targetURL,
 			duration:  dur,
 			err:       err,
 			criticity: Critical,
@@ -124,7 +137,7 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	if err != nil {
 		dur := time.Since(t)
 		return &HTTPRequest{
-			url:       url,
+			url:       targetURL,
 			duration:  dur,
 			err:       err,
 			criticity: Critical,
@@ -177,7 +190,7 @@ func (h *HTTPGenerator) MakeRequest(ctx context.Context, url string) Request {
 	}
 
 	return &HTTPRequest{
-		url:              url,
+		url:              targetURL,
 		duration:         dur,
 		status:           statusText,
 		statusShort:      strconv.Itoa(resp.StatusCode),
@@ -238,4 +251,9 @@ func (r HTTPRequest) Status() string {
 // IsError returns true if the request is an error
 func (r HTTPRequest) IsError() bool {
 	return r.err != nil
+}
+
+// URL returns the URL of the request
+func (r HTTPRequest) URL() string {
+	return r.url
 }

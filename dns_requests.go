@@ -20,8 +20,21 @@ func newDNSGenerator(_ config) Generator {
 // MakeRequest implements the Generator interface
 func (d *DNSGenerator) MakeRequest(ctx context.Context, url string) Request {
 	t := time.Now()
+
+	// Extract host from url robustly
+	_, host, _, err := parseTargetURL(url)
+	if err == nil {
+		// Strip port if present
+		if h, _, splitErr := net.SplitHostPort(host); splitErr == nil {
+			host = h
+		}
+	} else {
+		// Fallback to raw url if parsing fails
+		host = url
+	}
+
 	// Make the DNS request
-	_, err := net.DefaultResolver.LookupHost(ctx, url)
+	_, err = net.DefaultResolver.LookupHost(ctx, host)
 	dur := time.Since(t)
 
 	if err != nil {
@@ -101,4 +114,9 @@ func (r *DNSRequest) Status() string {
 // IsError returns true if the request is an error
 func (r *DNSRequest) IsError() bool {
 	return r.err != nil
+}
+
+// URL returns the request target URL
+func (r *DNSRequest) URL() string {
+	return r.url
 }

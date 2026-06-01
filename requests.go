@@ -37,4 +37,5 @@ type Request interface {
 	Status() string
 	Size() int64
 	Duration() time.Duration
+	URL() string
 }
