@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -28,10 +29,12 @@ type tuiModel struct {
 	maxLogSize int
 
 	// State
-	done   bool
-	width  int
-	height int
-	err    error
+	done      bool
+	width     int
+	height    int
+	err       error
+	cancel    context.CancelFunc
+	cancelled bool
 }
 
 // requestLogEntry represents a single completed request for display
@@ -54,10 +57,8 @@ type requestCompletedMsg struct {
 type allDoneMsg struct{}
 
 // Init initializes the Bubble Tea model
-func (m tuiModel) Init() tea.Cmd {
-	return tea.Batch(
-		tickCmd(),
-	)
+func (m *tuiModel) Init() tea.Cmd {
+	return tea.Batch(tickCmd())
 }
 
 // tickCmd sends periodic tick messages for stats refresh
@@ -67,8 +68,8 @@ func tickCmd() tea.Cmd {
 	})
 }
 
-// newTUIModel creates a new TUI model
-func newTUIModel(cfg config, stats Stats, totalReqs int) tuiModel {
+// newTUIModel creates a new TUI model instance
+func newTUIModel(cfg config, stats Stats, totalReqs int, cancel context.CancelFunc) tuiModel {
 	prog := progress.New(progress.WithDefaultGradient())
 
 	return tuiModel{
@@ -81,5 +82,7 @@ func newTUIModel(cfg config, stats Stats, totalReqs int) tuiModel {
 		requestLog:  make([]requestLogEntry, 0, 50),
 		maxLogSize:  50,
 		done:        false,
+		cancel:      cancel,
+		cancelled:   false,
 	}
 }

@@ -13,7 +13,7 @@ const (
 )
 
 // renderLiveView renders the live traffic generation view
-func (m tuiModel) renderLiveView() string {
+func (m *tuiModel) renderLiveView() string {
 	var b strings.Builder
 
 	// Header
@@ -35,7 +35,7 @@ func (m tuiModel) renderLiveView() string {
 }
 
 // renderHeader renders the header with config and progress
-func (m tuiModel) renderHeader() string {
+func (m *tuiModel) renderHeader() string {
 	elapsed := time.Since(m.startTime).Round(100 * time.Millisecond)
 
 	title := fmt.Sprintf("Traffic Simulator ── %s ── %d clients × %d requests",
@@ -59,7 +59,7 @@ func (m tuiModel) renderHeader() string {
 }
 
 // renderStatsPanel renders the stats boxes side by side
-func (m tuiModel) renderStatsPanel() string {
+func (m *tuiModel) renderStatsPanel() string {
 	statsBox := m.renderStatsBox()
 	statusBox := m.renderStatusBox()
 
@@ -68,7 +68,7 @@ func (m tuiModel) renderStatsPanel() string {
 }
 
 // renderStatsBox renders the live stats box
-func (m tuiModel) renderStatsBox() string {
+func (m *tuiModel) renderStatsBox() string {
 	snapshot := m.getStatsSnapshot()
 
 	elapsed := time.Since(m.startTime).Seconds()
@@ -96,7 +96,7 @@ func (m tuiModel) renderStatsBox() string {
 }
 
 // renderStatusBox renders the status code breakdown
-func (m tuiModel) renderStatusBox() string {
+func (m *tuiModel) renderStatusBox() string {
 	snapshot := m.getStatsSnapshot()
 
 	var lines []string
@@ -139,7 +139,7 @@ func (m tuiModel) renderStatusBox() string {
 }
 
 // renderRequestLog renders the scrolling request log
-func (m tuiModel) renderRequestLog() string {
+func (m *tuiModel) renderRequestLog() string {
 	if len(m.requestLog) == 0 {
 		return grayStyle.Render("  Waiting for requests...\n")
 	}
@@ -159,7 +159,7 @@ func (m tuiModel) renderRequestLog() string {
 }
 
 // formatLogEntry formats a single request log entry
-func (m tuiModel) formatLogEntry(entry requestLogEntry) string {
+func (m *tuiModel) formatLogEntry(entry requestLogEntry) string {
 	statusStyle := getStatusStyle(entry.status, entry.isError)
 	latencyMs := entry.duration.Milliseconds()
 	latencyStyle := getLatencyStyle(latencyMs)
@@ -182,15 +182,15 @@ func (m tuiModel) formatLogEntry(entry requestLogEntry) string {
 }
 
 // renderFinalSummary renders the final summary screen
-func (m tuiModel) renderFinalSummary() string {
+func (m *tuiModel) renderFinalSummary() string {
 	var b strings.Builder
 
 	elapsed := m.completionTime.Round(100 * time.Millisecond)
 
 	b.WriteString(titleStyle.Render("Traffic Simulator ── Complete"))
 	b.WriteString("\n\n")
-	b.WriteString(fmt.Sprintf("  ✓ %d requests completed in %s (%d clients)\n\n",
-		m.completed, elapsed, m.cfg.NbOfClients))
+	fmt.Fprintf(&b, "  ✓ %d requests completed in %s (%d clients)\n\n",
+		m.completed, elapsed, m.cfg.NbOfClients)
 
 	// Summary boxes
 	summaryBox := m.renderSummaryBox()
@@ -214,7 +214,7 @@ func (m tuiModel) renderFinalSummary() string {
 }
 
 // renderSummaryBox renders the summary stats box
-func (m tuiModel) renderSummaryBox() string {
+func (m *tuiModel) renderSummaryBox() string {
 	snapshot := m.getStatsSnapshot()
 
 	content := fmt.Sprintf(
@@ -238,7 +238,7 @@ func (m tuiModel) renderSummaryBox() string {
 }
 
 // renderTimelineBox renders the HTTP response timeline
-func (m tuiModel) renderTimelineBox() string {
+func (m *tuiModel) renderTimelineBox() string {
 	snapshot := m.getStatsSnapshot()
 
 	if len(snapshot.timeline) == 0 {
@@ -290,7 +290,7 @@ type timelineStep struct {
 }
 
 // getStatsSnapshot gets a thread-safe snapshot of current stats
-func (m tuiModel) getStatsSnapshot() statsSnapshot {
+func (m *tuiModel) getStatsSnapshot() statsSnapshot {
 	data := m.stats.Snapshot()
 
 	// Use completion time if done, otherwise current elapsed time

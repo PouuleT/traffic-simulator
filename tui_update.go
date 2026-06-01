@@ -9,7 +9,7 @@ import (
 )
 
 // Update handles messages and updates the model
-func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
@@ -20,10 +20,19 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 		} else {
-			// During execution, only Ctrl+C quits
+			// During execution
 			switch msg.String() {
 			case "ctrl+c":
-				return m, tea.Quit
+				if m.cancelled {
+					// Second Ctrl+C: quit right away
+					return m, tea.Quit
+				}
+				// First Ctrl+C: stop the workers
+				m.cancelled = true
+				if m.cancel != nil {
+					m.cancel()
+				}
+				return m, nil
 			}
 		}
 
@@ -74,7 +83,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the TUI
-func (m tuiModel) View() string {
+func (m *tuiModel) View() string {
 	if m.err != nil {
 		return fmt.Sprintf("Error: %v\n", m.err)
 	}
