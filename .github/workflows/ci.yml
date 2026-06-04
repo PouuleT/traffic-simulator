@@ -1,12 +1,20 @@
-name: Release
+name: CI
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   checks:
@@ -77,30 +85,3 @@ jobs:
           name: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
           path: traffic-simulator_${{ matrix.goos }}_${{ matrix.goarch }}
           retention-days: 7
-
-  publish:
-    name: Publish release
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-      - name: Download release artifacts
-        uses: actions/download-artifact@v7
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Generate checksums
-        working-directory: dist
-        run: sha256sum traffic-simulator_* > sha256sums.txt
-
-      - name: Create or update release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release upload "${TAG}" dist/* --clobber
-          else
-            gh release create "${TAG}" dist/* --title "${TAG}" --generate-notes
-          fi
